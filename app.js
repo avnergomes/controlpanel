@@ -260,7 +260,7 @@ function normalizeVbp(row) {
     url: getValue(row, ["url", "URL", "Page URL"]) || "",
     path,
     referrer: getValue(row, ["referrer", "Referrer"]) || "",
-    timezone: getValue(row, ["timezone", "Timezone"]) || "",
+    timezone: getValue(row, ["timezone", "Timezone", "Fuso Horario", "Fuso horário", "Fuso", "Time Zone", "time zone", "tz", "K", "k"]) || "",
     sessionId: getValue(row, ["sessionId", "Session ID", "session id"]) || "",
     os: getValue(row, ["os", "OS"]) || derived.os || "",
     browser: getValue(row, ["browser", "Browser"]) || derived.browser || "",
