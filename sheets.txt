@@ -1,0 +1,101 @@
+https://docs.google.com/spreadsheets/d/17wXvFfRcrl6bbzFMwX7TF7o99t7XBa3khQBC1Hroq5M/edit?gid=1617126613
+https://docs.google.com/spreadsheets/d/1SwbupTGRM0DXleSSg1lO_HllDZbTF6x39ryPJRh5UX4/edit?gid=13565778
+https://docs.google.com/spreadsheets/d/1Pz57YYeQxhSgHc10kzSM71akB2VzlhzK_pXxwVnvcGA/edit?gid=997539922
+
+
+Você é um engenheiro front-end sênior. Gere um dashboard 100% estático (GitHub Pages) para visualizar tráfego/visitas a páginas a partir de 3 Google Sheets públicos. Entregue um mini-site em HTML/CSS/JS (sem build, sem frameworks) com UI moderna, responsiva, acessível e leve.
+
+FONTES (Google Sheets):
+1) Portfolio Visitor Tracking
+   - sheetId: 17wXvFfRcrl6bbzFMwX7TF7o99t7XBa3khQBC1Hroq5M
+   - gid principal (visits): 1617126613
+
+2) VBP Paraná - Rastreamento de Visitas
+   - sheetId: 1SwbupTGRM0DXleSSg1lO_HllDZbTF6x39ryPJRh5UX4
+   - gid mais recente: 13565778
+   - IMPORTANTE: este spreadsheet tem DUAS abas/páginas de visitas (uma mais antiga e outra mais recente). Implementar suporte a múltiplos gids por “site” e fazer merge/deduplicação. Deixe um placeholder de config para eu inserir o gid antigo depois (ex: VBP_OLD_GID). Explique no README como descobrir o gid antigo: abrir a aba antiga no Google Sheets e copiar o parâmetro gid=XXXX da URL.
+
+3) Preços Florestais - Rastreamento de Visitas
+   - sheetId: 1Pz57YYeQxhSgHc10kzSM71akB2VzlhzK_pXxwVnvcGA
+   - gid (visitantes): 997539922
+
+REQUISITOS DE DADOS / INGESTÃO:
+- Como GitHub Pages é estático e CORS pode bloquear fetch direto, use o endpoint GViz do Google Sheets e “script injection” (JSONP-like) capturando `google.visualization.Query.setResponse(...)` para obter os dados SEM backend.
+- Buscar dados de cada (sheetId,gid) de forma sequencial (evitar concorrência ao interceptar setResponse).
+- Normalizar os registros em um schema único:
+  {
+    siteKey: 'portfolio'|'vbp-parana'|'precos-florestais',
+    ts: Date (a partir de Client Timestamp / Timestamp ISO / timestamp),
+    url: string,
+    path: string,
+    referrer: string,
+    timezone: string,
+    sessionId: string,
+    os: string,
+    browser: string,
+    deviceType: 'Desktop'|'Mobile'|'Tablet'|'Unknown',
+    returning: boolean|undefined,
+    userAgent: string|undefined
+  }
+- Mapear colunas com nomes diferentes:
+  - Portfolio: preferir "Client Timestamp" (ISO); url em "Page URL"; session em "Session ID"; timezone em "Timezone"; os em "OS"; referrer em "Referrer"; returning em "Returning Visitor".
+  - Preços Florestais: usar "Timestamp" (ISO); url em "URL"; path em "Caminho"; session em "Session ID"; timezone em "Timezone"; os em "Sistema Operacional"; browser em "Navegador"; device em "Dispositivo"; referrer em "Referrer"; userAgent em "User Agent".
+  - VBP Paraná (Tracking Data): usar "timestamp" (ISO) e/ou "Date"; path em "page" ou "pathname"; referrer em "referrer"; timezone em "timezone"; session em "sessionId"; userAgent em "userAgent". Se não houver OS explícito, derive OS/device/browser via parsing do userAgent (implemente um parser simples por regex, sem dependências, ou use UAParser via CDN se quiser).
+- Deduplicação ao fazer merge entre abas (especialmente VBP): chave sugerida = `${siteKey}|${ts.toISOString()}|${sessionId}|${path||url}`.
+- Ordenar por ts ascendente para séries.
+
+REQUISITOS DO DASHBOARD (FUNCIONALIDADES):
+1) Visão geral (Overview)
+- Cards com:
+  - Total de acessos (desde o lançamento = primeiro ts)
+  - Total de sessões únicas (distinct sessionId)
+  - “Último acesso” por site (um card por site com timestamp mais recente)
+  - “Atualizado em: …” e status (online/ok/erro)
+- Gráfico time series combinando TODOS os sites:
+  - seletor de granularidade: Horário / Diário / Mensal / Anual
+  - filtro de período: “desde o lançamento”, “últimos 7/30/90 dias”, e um range custom (date inputs).
+  - linhas por site + opcional “Total”.
+- Tabela opcional com top 10 dias/horas por volume.
+
+2) Páginas individuais (uma view por site: portfolio, vbp-parana, precos-florestais)
+- Série temporal do próprio site (mesmos controles de granularidade e período).
+- Distribuições:
+  - Timezone (top N + “outros”)
+  - Referrer (normalizar “Direct”, “direct”, vazio => “Direct”; agrupar domínios)
+  - OS
+  - Sessões únicas por período (distinct sessionId) + métrica de “acessos sem repetição”
+- Listagem “Últimos acessos” (ex: últimos 25 registros) com ts, path/url, referrer, timezone, os/device.
+- KPI: taxa de returning (se disponível; para VBP pode ficar N/A).
+
+3) Atualização “em tempo real”
+- Polling automático (ex: a cada 60s) para rebaixar custo.
+- Se houver novos registros (comparar max ts ou hash do dataset), reprocessar e rerender.
+- Cache local (localStorage) opcional: guardar último dataset e timestamp do fetch; invalidar em N minutos.
+
+UI/UX e Implementação:
+- Usar Chart.js via CDN para gráficos (sem build).
+- CSS moderno (grid, cards, dark-mode automático via prefers-color-scheme).
+- Navegação SPA simples por hash (#/overview, #/portfolio, #/vbp-parana, #/precos-florestais).
+- Sem dependências pesadas; no máximo Chart.js (+ UAParser opcional).
+- Performance: agregações via Map; evitar O(n²); suportar pelo menos 50k linhas.
+- Tratamento de erros: se falhar 1 fonte, mostrar toast/alerta e continuar com as demais.
+
+ARQUIVOS A GERAR:
+- index.html (layout + containers)
+- styles.css (tema, responsivo)
+- app.js (roteamento, fetch gviz, normalização, agregações, gráficos)
+- config.js (IDs/gids e mapeamentos; incluir placeholder VBP_OLD_GID = null)
+- README.md com:
+  - como rodar local (ex: python -m http.server)
+  - como publicar no GitHub Pages
+  - como descobrir e preencher o gid antigo do VBP
+  - notas sobre permissões (sheet deve estar “anyone with link”)
+
+CRITÉRIOS DE ACEITE (testes manuais):
+- Abrir index.html via servidor local e ver Overview com dados.
+- Alternar granularidade (hora/dia/mês/ano) muda o gráfico e os totals.
+- Rotas individuais exibem distribuições e últimas visitas.
+- Inserir VBP_OLD_GID e ver merge (sem duplicar linhas).
+- Atualização automática a cada 60s atualiza “Atualizado em” e gráficos.
+
+Entregue o código completo de todos os arquivos no diretório raiz, pronto para GitHub Pages.

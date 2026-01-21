@@ -1,0 +1,205 @@
+﻿<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Control Panel - Traffic Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="bg-grid" aria-hidden="true"></div>
+  <header class="site-header">
+    <div class="brand">
+      <div class="badge">Traffic Control</div>
+      <h1>Control Panel</h1>
+      <p>Monitoramento de visitas para Portfolio, VBP Parana e Precos Florestais.</p>
+    </div>
+    <div class="status-card">
+      <div class="status-line">Atualizado em: <span id="updated-at">--</span></div>
+      <div class="status-line">Status: <span id="status-text" class="status-ok">ok</span></div>
+      <button id="refresh-btn" class="btn">Atualizar agora</button>
+    </div>
+  </header>
+
+  <nav class="site-nav">
+    <a href="#/overview" data-route="overview" class="nav-link">Visao geral</a>
+    <a href="#/portfolio" data-route="portfolio" class="nav-link">Portfolio</a>
+    <a href="#/vbp-parana" data-route="vbp-parana" class="nav-link">VBP Parana</a>
+    <a href="#/precos-florestais" data-route="precos-florestais" class="nav-link">Precos Florestais</a>
+  </nav>
+
+  <main class="content">
+    <section id="view-overview" data-view="overview" class="view active">
+      <div class="card-grid" id="overview-cards"></div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Serie temporal combinada</h2>
+            <p>Todos os sites + total opcional.</p>
+          </div>
+          <div class="controls" data-scope="overview">
+            <label>
+              Granularidade
+              <select data-filter="granularity">
+                <option value="hour">Hora</option>
+                <option value="day" selected>Dia</option>
+                <option value="month">Mes</option>
+                <option value="year">Ano</option>
+              </select>
+            </label>
+            <label>
+              Periodo
+              <select data-filter="period">
+                <option value="all" selected>Desde o lancamento</option>
+                <option value="7d">Ultimos 7 dias</option>
+                <option value="30d">Ultimos 30 dias</option>
+                <option value="90d">Ultimos 90 dias</option>
+                <option value="custom">Custom</option>
+              </select>
+            </label>
+            <div class="custom-range" data-custom-range>
+              <label>
+                Inicio
+                <input type="date" data-filter="start">
+              </label>
+              <label>
+                Fim
+                <input type="date" data-filter="end">
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="overview-chart"></canvas>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Top periodos</h2>
+            <p>10 maiores picos por volume.</p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table id="top-periods">
+            <thead>
+              <tr>
+                <th>Periodo</th>
+                <th>Visitas</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-site" data-view="site" class="view">
+      <div class="site-title">
+        <h2 id="site-name">Site</h2>
+        <p id="site-desc">Serie e distribuicoes.</p>
+      </div>
+
+      <div class="card-grid" id="site-kpis"></div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Serie temporal do site</h2>
+            <p>Filtre periodo e granularidade.</p>
+          </div>
+          <div class="controls" data-scope="site">
+            <label>
+              Granularidade
+              <select data-filter="granularity">
+                <option value="hour">Hora</option>
+                <option value="day" selected>Dia</option>
+                <option value="month">Mes</option>
+                <option value="year">Ano</option>
+              </select>
+            </label>
+            <label>
+              Periodo
+              <select data-filter="period">
+                <option value="all" selected>Desde o lancamento</option>
+                <option value="7d">Ultimos 7 dias</option>
+                <option value="30d">Ultimos 30 dias</option>
+                <option value="90d">Ultimos 90 dias</option>
+                <option value="custom">Custom</option>
+              </select>
+            </label>
+            <div class="custom-range" data-custom-range>
+              <label>
+                Inicio
+                <input type="date" data-filter="start">
+              </label>
+              <label>
+                Fim
+                <input type="date" data-filter="end">
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="site-chart"></canvas>
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div class="panel">
+          <h3>Timezones</h3>
+          <div class="chart-wrap small">
+            <canvas id="tz-chart"></canvas>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Referrers</h3>
+          <div class="chart-wrap small">
+            <canvas id="ref-chart"></canvas>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>OS</h3>
+          <div class="chart-wrap small">
+            <canvas id="os-chart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Ultimos acessos</h2>
+            <p>Registros mais recentes.</p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table id="latest-table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Path/URL</th>
+                <th>Referrer</th>
+                <th>Timezone</th>
+                <th>OS/Device</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
