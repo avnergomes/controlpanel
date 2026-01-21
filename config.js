@@ -26,5 +26,12 @@ const CONFIG = {
       gids: ["997539922"],
       kind: "precos",
     },
+    {
+      key: "precos-terras",
+      name: "Precos de Terras",
+      sheetId: "1yejFvAzuRfWQkdP78I-1yWGJ7aygnTEzPpvI4kw20UQ",
+      gids: ["1804289745"],
+      kind: "precos",
+    },
   ],
 };

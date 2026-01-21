@@ -201,7 +201,7 @@ function normalizeSiteRows(site, rows) {
     case "vbp":
       return rows.map((row) => normalizeVbp(row)).filter(Boolean);
     case "precos":
-      return rows.map((row) => normalizePrecos(row)).filter(Boolean);
+      return rows.map((row) => normalizePrecos(row, site.key)).filter(Boolean);
     default:
       return [];
   }
@@ -228,13 +228,13 @@ function normalizePortfolio(row) {
   };
 }
 
-function normalizePrecos(row) {
+function normalizePrecos(row, siteKey) {
   const ts = parseDate(getValue(row, ["Timestamp", "timestamp"]));
   if (!ts) return null;
   const url = getValue(row, ["URL", "url"]) || "";
   const returning = getReturningValue(row);
   return {
-    siteKey: "precos-florestais",
+    siteKey,
     ts,
     url,
     path: getValue(row, ["Caminho", "caminho"]) || extractPath(url),

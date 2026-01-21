@@ -1,6 +1,7 @@
 https://docs.google.com/spreadsheets/d/17wXvFfRcrl6bbzFMwX7TF7o99t7XBa3khQBC1Hroq5M/edit?gid=1617126613
 https://docs.google.com/spreadsheets/d/1SwbupTGRM0DXleSSg1lO_HllDZbTF6x39ryPJRh5UX4/edit?gid=13565778
 https://docs.google.com/spreadsheets/d/1Pz57YYeQxhSgHc10kzSM71akB2VzlhzK_pXxwVnvcGA/edit?gid=997539922
+https://docs.google.com/spreadsheets/d/1yejFvAzuRfWQkdP78I-1yWGJ7aygnTEzPpvI4kw20UQ/edit?gid=1804289745#gid=1804289745
 
 
 Você é um engenheiro front-end sênior. Gere um dashboard 100% estático (GitHub Pages) para visualizar tráfego/visitas a páginas a partir de 3 Google Sheets públicos. Entregue um mini-site em HTML/CSS/JS (sem build, sem frameworks) com UI moderna, responsiva, acessível e leve.
