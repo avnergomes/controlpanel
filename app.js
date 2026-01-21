@@ -633,6 +633,31 @@ function renderBarChart(canvasId, entries, label) {
   const labels = entries.map((entry) => entry[0]);
   const values = entries.map((entry) => entry[1]);
 
+  const barTopLabels = {
+    id: "barTopLabels",
+    afterDatasetsDraw(chart) {
+      if (chart.config.type !== "bar") return;
+      const { ctx: chartCtx } = chart;
+      const dataset = chart.data.datasets[0];
+      const meta = chart.getDatasetMeta(0);
+      if (!dataset || !meta?.data?.length) return;
+
+      chartCtx.save();
+      chartCtx.font = "600 12px 'Space Grotesk', sans-serif";
+      chartCtx.fillStyle = getComputedStyle(document.body).color;
+      chartCtx.textAlign = "center";
+      chartCtx.textBaseline = "bottom";
+
+      meta.data.forEach((element, index) => {
+        const value = dataset.data[index];
+        if (value === null || value === undefined) return;
+        const { x, y } = element.tooltipPosition();
+        chartCtx.fillText(formatNumber(value), x, y - 4);
+      });
+      chartCtx.restore();
+    },
+  };
+
   state.charts[canvasId] = new Chart(ctx, {
     type: "bar",
     data: {
@@ -657,6 +682,7 @@ function renderBarChart(canvasId, entries, label) {
         y: { ticks: { color: getComputedStyle(document.body).color } },
       },
     },
+    plugins: [barTopLabels],
   });
 }
 
