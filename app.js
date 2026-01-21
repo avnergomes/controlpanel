@@ -12,7 +12,7 @@
   },
 };
 
-const CACHE_KEY = "controlpanel-cache-v1";
+const CACHE_KEY = "controlpanel-cache-v2";
 
 document.addEventListener("DOMContentLoaded", () => {
   document.body.classList.add("loaded");
@@ -254,13 +254,18 @@ function normalizeVbp(row) {
   const userAgent = getValue(row, ["userAgent", "User Agent", "user agent"]) || "";
   const derived = userAgent ? parseUserAgent(userAgent) : {};
 
+  const timezone =
+    getValue(row, ["timezone", "Timezone", "Fuso Horario", "Fuso horário", "Fuso", "Time Zone", "time zone", "tz", "K", "k"]) ||
+    getValueByKeyMatch(row, /(fuso|time\s*zone|timezone|tz)/i) ||
+    "";
+
   return {
     siteKey: "vbp-parana",
     ts,
     url: getValue(row, ["url", "URL", "Page URL"]) || "",
     path,
     referrer: getValue(row, ["referrer", "Referrer"]) || "",
-    timezone: getValue(row, ["timezone", "Timezone", "Fuso Horario", "Fuso horário", "Fuso", "Time Zone", "time zone", "tz", "K", "k"]) || "",
+    timezone,
     sessionId: getValue(row, ["sessionId", "Session ID", "session id"]) || "",
     os: getValue(row, ["os", "OS"]) || derived.os || "",
     browser: getValue(row, ["browser", "Browser"]) || derived.browser || "",
@@ -302,6 +307,17 @@ function getValue(row, names) {
   for (const name of names) {
     const value = lookup[name.toLowerCase()];
     if (value !== undefined && value !== null && value !== "") return value;
+  }
+  return null;
+}
+
+function getValueByKeyMatch(row, pattern) {
+  const keys = Object.keys(row);
+  for (const key of keys) {
+    if (pattern.test(key)) {
+      const value = row[key];
+      if (value !== undefined && value !== null && value !== "") return value;
+    }
   }
   return null;
 }
