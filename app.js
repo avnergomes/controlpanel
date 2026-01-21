@@ -12,7 +12,7 @@
   },
 };
 
-const CACHE_KEY = "controlpanel-cache-v2";
+const CACHE_KEY = "controlpanel-cache-v3";
 
 document.addEventListener("DOMContentLoaded", () => {
   document.body.classList.add("loaded");
@@ -211,6 +211,7 @@ function normalizePortfolio(row) {
   const ts = parseDate(getValue(row, ["Client Timestamp", "Timestamp", "client timestamp"]));
   if (!ts) return null;
   const url = getValue(row, ["Page URL", "URL", "page url"]);
+  const returning = getReturningValue(row);
   return {
     siteKey: "portfolio",
     ts,
@@ -222,7 +223,7 @@ function normalizePortfolio(row) {
     os: getValue(row, ["OS", "os"]) || "",
     browser: getValue(row, ["Browser", "browser"]) || "",
     deviceType: normalizeDeviceType(getValue(row, ["Device", "device"])),
-    returning: parseBool(getValue(row, ["Returning Visitor", "returning visitor"])),
+    returning,
     userAgent: getValue(row, ["User Agent", "user agent"]) || undefined,
   };
 }
@@ -231,6 +232,7 @@ function normalizePrecos(row) {
   const ts = parseDate(getValue(row, ["Timestamp", "timestamp"]));
   if (!ts) return null;
   const url = getValue(row, ["URL", "url"]) || "";
+  const returning = getReturningValue(row);
   return {
     siteKey: "precos-florestais",
     ts,
@@ -242,7 +244,7 @@ function normalizePrecos(row) {
     os: getValue(row, ["Sistema Operacional", "sistema operacional"]) || "",
     browser: getValue(row, ["Navegador", "navegador"]) || "",
     deviceType: normalizeDeviceType(getValue(row, ["Dispositivo", "dispositivo"])),
-    returning: parseBool(getValue(row, ["Returning", "returning"])),
+    returning,
     userAgent: getValue(row, ["User Agent", "user agent"]) || undefined,
   };
 }
@@ -253,6 +255,7 @@ function normalizeVbp(row) {
   const path = getValue(row, ["page", "pathname", "path"]) || "";
   const userAgent = getValue(row, ["userAgent", "User Agent", "user agent"]) || "";
   const derived = userAgent ? parseUserAgent(userAgent) : {};
+  const returning = getReturningValue(row);
 
   const timezone =
     getValue(row, ["timezone", "Timezone", "Fuso Horario", "Fuso horário", "Fuso", "Time Zone", "time zone", "tz", "K", "k"]) ||
@@ -270,7 +273,7 @@ function normalizeVbp(row) {
     os: getValue(row, ["os", "OS"]) || derived.os || "",
     browser: getValue(row, ["browser", "Browser"]) || derived.browser || "",
     deviceType: normalizeDeviceType(getValue(row, ["device", "Device"]) || derived.deviceType),
-    returning: parseBool(getValue(row, ["returning", "Returning"])),
+    returning,
     userAgent: userAgent || undefined,
   };
 }
@@ -320,6 +323,31 @@ function getValueByKeyMatch(row, pattern) {
     }
   }
   return null;
+}
+
+function getReturningValue(row) {
+  const value =
+    getValue(row, [
+      "Returning Visitor",
+      "returning visitor",
+      "Returning",
+      "returning",
+      "ReturningVisitor",
+      "returningVisitor",
+      "Returning_Visitor",
+      "returning_visitor",
+      "Is Returning",
+      "isReturning",
+      "is_returning",
+      "Visitante Recorrente",
+      "visitante recorrente",
+      "Retornando",
+      "retornando",
+      "Retorno",
+      "retorno",
+    ]) || getValueByKeyMatch(row, /(return|retorn)/i);
+
+  return parseBool(value);
 }
 
 function parseDate(value) {
