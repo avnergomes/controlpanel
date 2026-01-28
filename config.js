@@ -33,5 +33,12 @@ const CONFIG = {
       gids: ["1804289745"],
       kind: "precos",
     },
+    {
+      key: "precos-diarios",
+      name: "Precos Diarios",
+      sheetId: "1bwiH0HTIngFw2ZfAXLQI-YlpajJvVTuFsfugHLYOUhE",
+      gids: ["1237498394"],
+      kind: "precos",
+    },
   ],
 };
