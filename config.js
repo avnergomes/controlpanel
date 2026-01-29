@@ -8,8 +8,8 @@ const CONFIG = {
     {
       key: "datageoparana",
       name: "Datageo Parana",
-      sheetId: "1UlhobwGjmAoPY6C0ppYsp_sNcCSjANH6RiPZcJTtMY",
-      gids: ["0"],
+      sheetId: "1UlhobwGjmAoPY6C0ppYsp_sNcFCSjANH6RiPZcJTMY",
+      gids: ["1349286283"],
       kind: "precos",
     },
     {
