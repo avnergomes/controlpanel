@@ -6,6 +6,13 @@ const CONFIG = {
   maxLatest: 25,
   sites: [
     {
+      key: "datageoparana",
+      name: "Datageo Parana",
+      sheetId: "1UlhobwGjmAoPY6C0ppYsp_sNcCSjANH6RiPZcJTtMY",
+      gids: ["0"],
+      kind: "precos",
+    },
+    {
       key: "portfolio",
       name: "Portfolio",
       sheetId: "17wXvFfRcrl6bbzFMwX7TF7o99t7XBa3khQBC1Hroq5M",

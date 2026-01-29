@@ -410,10 +410,10 @@ function renderOverview() {
 
   const totalVisits = state.data.length;
   const uniqueSessions = new Set(state.data.map((row) => row.sessionId).filter(Boolean)).size;
-  const lastBySite = Object.keys(state.bySite).map((key) => {
-    const rows = state.bySite[key];
+  const lastBySite = CONFIG.sites.map((site) => {
+    const rows = state.bySite[site.key] || [];
     const last = rows.length ? rows[rows.length - 1].ts : null;
-    return { key, last };
+    return { key: site.key, last };
   });
 
   cards.appendChild(makeCard("Total de acessos", formatNumber(totalVisits)));
@@ -754,7 +754,14 @@ function pad(value) {
 }
 
 function pickColor(index) {
-  const palette = ["#ff7a18", "#2dd4bf", "#facc15", "#fb7185"];
+  const palette = [
+    "#38bdf8", // Datageo Parana
+    "#22c55e", // Portfolio
+    "#a855f7", // VBP Parana
+    "#f59e0b", // Precos Florestais
+    "#ef4444", // Precos de Terras
+    "#14b8a6", // Precos Diarios
+  ];
   return palette[index % palette.length];
 }
 
