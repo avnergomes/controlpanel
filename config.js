@@ -1,51 +1,15 @@
-﻿const VBP_OLD_GID = 1184050764;
-
-const CONFIG = {
+﻿const CONFIG = {
   pollMs: 60000,
   cacheMinutes: 10,
   maxLatest: 25,
+  proxyUrl: "https://script.google.com/macros/s/AKfycbyk8VzLygqFmid0cSB5Qge8yRKRV-hJNvWlCSZBPrOCnyJyTd21d-6mNRjyJ7NIr_-36Q/exec",
+  proxyToken: "a3f1b2c4-5d6e-7f8a-9b0c-1d2e3f4a5b6c",
   sites: [
-    {
-      key: "datageoparana",
-      name: "Datageo Parana",
-      sheetId: "1UIhobwGjfmAoPY6COppYsp_sNcfCSjANH6RiPZcJTMY",
-      gids: ["1349286283"],
-      kind: "precos",
-    },
-    {
-      key: "portfolio",
-      name: "Portfolio",
-      sheetId: "17wXvFfRcrl6bbzFMwX7TF7o99t7XBa3khQBC1Hroq5M",
-      gids: ["1617126613"],
-      kind: "portfolio",
-    },
-    {
-      key: "vbp-parana",
-      name: "VBP Parana",
-      sheetId: "1SwbupTGRM0DXleSSg1lO_HllDZbTF6x39ryPJRh5UX4",
-      gids: ["13565778", VBP_OLD_GID],
-      kind: "vbp",
-    },
-    {
-      key: "precos-florestais",
-      name: "Precos Florestais",
-      sheetId: "1Pz57YYeQxhSgHc10kzSM71akB2VzlhzK_pXxwVnvcGA",
-      gids: ["997539922"],
-      kind: "precos",
-    },
-    {
-      key: "precos-terras",
-      name: "Precos de Terras",
-      sheetId: "1yejFvAzuRfWQkdP78I-1yWGJ7aygnTEzPpvI4kw20UQ",
-      gids: ["1804289745"],
-      kind: "precos",
-    },
-    {
-      key: "precos-diarios",
-      name: "Precos Diarios",
-      sheetId: "1bwiH0HTIngFw2ZfAXLQI-YlpajJvVTuFsfugHLYOUhE",
-      gids: ["1237498394"],
-      kind: "precos",
-    },
+    { key: "datageoparana", name: "Datageo Parana", kind: "precos" },
+    { key: "portfolio", name: "Portfolio", kind: "portfolio" },
+    { key: "vbp-parana", name: "VBP Parana", kind: "vbp" },
+    { key: "precos-florestais", name: "Precos Florestais", kind: "precos" },
+    { key: "precos-terras", name: "Precos de Terras", kind: "precos" },
+    { key: "precos-diarios", name: "Precos Diarios", kind: "precos" },
   ],
 };

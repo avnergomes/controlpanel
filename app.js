@@ -124,80 +124,43 @@ async function fetchAllSites() {
   const results = [];
   const status = {};
 
-  for (const site of CONFIG.sites) {
-    const gids = site.gids.filter(Boolean);
-    let siteRows = [];
+  try {
+    const url = `${CONFIG.proxyUrl}?token=${encodeURIComponent(CONFIG.proxyToken)}`;
+    const response = await fetch(url);
 
-    try {
-      for (const gid of gids) {
-        const response = await fetchGviz(site.sheetId, gid);
-        const rows = gvizToObjects(response);
-        siteRows = siteRows.concat(normalizeSiteRows(site, rows));
-      }
-      status[site.key] = "ok";
-    } catch (error) {
-      status[site.key] = "error";
-      showToast(`Erro ao carregar ${site.name}`);
+    if (!response.ok) {
+      throw new Error(`Proxy error: ${response.status}`);
     }
 
-    results.push(...dedupeRows(siteRows));
+    const payload = await response.json();
+
+    if (payload.error) {
+      throw new Error(payload.error);
+    }
+
+    for (const site of CONFIG.sites) {
+      const siteData = payload.sites[site.key];
+
+      if (!siteData || siteData.status === "error") {
+        status[site.key] = "error";
+        if (siteData) showToast(`Erro ao carregar ${site.name}: ${siteData.error || "unknown"}`);
+        continue;
+      }
+
+      status[site.key] = "ok";
+      const rows = siteData.rows || [];
+      const normalized = normalizeSiteRows(site, rows);
+      results.push(...dedupeRows(normalized));
+    }
+  } catch (error) {
+    for (const site of CONFIG.sites) {
+      status[site.key] = "error";
+    }
+    showToast("Erro ao conectar ao proxy");
   }
 
   results.sort((a, b) => a.ts - b.ts);
   return { data: results, status };
-}
-
-function fetchGviz(sheetId, gid) {
-  return new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    const timeout = setTimeout(() => {
-      cleanup();
-      reject(new Error("Timeout"));
-    }, 15000);
-
-    window.google = window.google || {};
-    window.google.visualization = window.google.visualization || {};
-    window.google.visualization.Query = window.google.visualization.Query || {};
-    const previous = window.google.visualization.Query.setResponse;
-
-    function cleanup() {
-      clearTimeout(timeout);
-      script.remove();
-      if (previous) {
-        window.google.visualization.Query.setResponse = previous;
-      } else {
-        delete window.google.visualization.Query.setResponse;
-      }
-    }
-
-    window.google.visualization.Query.setResponse = (response) => {
-      cleanup();
-      if (response.status !== "ok") {
-        reject(new Error(response.errors?.[0]?.message || "GViz error"));
-      } else {
-        resolve(response);
-      }
-    };
-
-    script.onerror = () => {
-      cleanup();
-      reject(new Error("Script load error"));
-    };
-
-    script.src = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?gid=${gid}&tqx=out:json`;
-    document.body.appendChild(script);
-  });
-}
-
-function gvizToObjects(response) {
-  const cols = response.table.cols.map((col) => (col.label || col.id || "").trim());
-  return response.table.rows.map((row) => {
-    const obj = {};
-    row.c.forEach((cell, index) => {
-      obj[cols[index]] = cell ? cell.v : null;
-    });
-    return obj;
-  });
 }
 
 function normalizeSiteRows(site, rows) {
