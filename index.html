@@ -16,7 +16,7 @@
     <div class="brand">
       <div class="badge">Traffic Control</div>
       <h1>Control Panel</h1>
-      <p>Monitoramento de visitas para Portfolio, VBP Parana, Precos Florestais e Precos de Terras.</p>
+      <p>Monitoramento de visitas — 6 sites, metricas de performance e distribuicoes.</p>
     </div>
     <div class="status-card">
       <div class="status-line">Atualizado em: <span id="updated-at">--</span></div>
@@ -79,6 +79,27 @@
         </div>
         <div class="chart-wrap">
           <canvas id="overview-chart"></canvas>
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div class="panel">
+          <h3>Dispositivos</h3>
+          <div class="chart-wrap small">
+            <canvas id="overview-devices-chart"></canvas>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Browsers</h3>
+          <div class="chart-wrap small">
+            <canvas id="overview-browsers-chart"></canvas>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Novos vs Retornantes</h3>
+          <div class="chart-wrap small">
+            <canvas id="overview-returning-chart"></canvas>
+          </div>
         </div>
       </div>
 
@@ -173,6 +194,34 @@
             <canvas id="os-chart"></canvas>
           </div>
         </div>
+        <div class="panel">
+          <h3>Browser</h3>
+          <div class="chart-wrap small">
+            <canvas id="browser-chart"></canvas>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Dispositivo</h3>
+          <div class="chart-wrap small">
+            <canvas id="device-chart"></canvas>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Idioma</h3>
+          <div class="chart-wrap small">
+            <canvas id="lang-chart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Performance</h2>
+            <p>Metricas medias de carregamento.</p>
+          </div>
+        </div>
+        <div class="card-grid" id="site-performance"></div>
       </div>
 
       <div class="panel">
@@ -190,7 +239,9 @@
                 <th>Path/URL</th>
                 <th>Referrer</th>
                 <th>Timezone</th>
-                <th>OS/Device</th>
+                <th>OS</th>
+                <th>Browser</th>
+                <th>Dispositivo</th>
               </tr>
             </thead>
             <tbody></tbody>

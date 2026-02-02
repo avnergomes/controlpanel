@@ -189,6 +189,8 @@ function normalizePortfolio(row) {
   if (!ts) return null;
   const url = getValue(row, ["Page URL", "URL", "page url"]);
   const returning = getReturningValue(row);
+  const userAgent = getValue(row, ["User Agent", "user agent"]) || "";
+  const derived = userAgent ? parseUserAgent(userAgent) : {};
   return {
     siteKey: "portfolio",
     ts,
@@ -197,11 +199,22 @@ function normalizePortfolio(row) {
     referrer: getValue(row, ["Referrer", "referrer"]) || "",
     timezone: getValue(row, ["Timezone", "timezone"]) || "",
     sessionId: getValue(row, ["Session ID", "session id"]) || "",
-    os: getValue(row, ["OS", "os"]) || "",
-    browser: getValue(row, ["Browser", "browser"]) || "",
-    deviceType: normalizeDeviceType(getValue(row, ["Device", "device"])),
+    os: getValue(row, ["OS", "os"]) || derived.os || "",
+    browser: getValue(row, ["Browser", "browser"]) || derived.browser || "",
+    deviceType: normalizeDeviceType(getValue(row, ["Device", "device", "deviceType"]) || derived.deviceType),
     returning,
-    userAgent: getValue(row, ["User Agent", "user agent"]) || undefined,
+    userAgent: userAgent || undefined,
+    language: getValue(row, ["Language", "language"]) || "",
+    screenWidth: toNumber(getValue(row, ["Screen Width", "screenWidth", "screenResolution"])),
+    screenHeight: toNumber(getValue(row, ["Screen Height", "screenHeight"])),
+    connectionType: getValue(row, ["Connection Type", "connectionType"]) || "",
+    loadTime: toNumber(getValue(row, ["Page Load Time", "pageLoadTime", "loadTime"])),
+    firstContentfulPaint: toNumber(getValue(row, ["First Contentful Paint", "firstContentfulPaint"])),
+    domInteractiveTime: toNumber(getValue(row, ["DOM Interactive Time", "domInteractiveTime"])),
+    isMobile: parseBool(getValue(row, ["isMobile", "Is Mobile"])),
+    utmSource: getValue(row, ["UTM Source", "utmSource"]) || "",
+    utmMedium: getValue(row, ["UTM Medium", "utmMedium"]) || "",
+    utmCampaign: getValue(row, ["UTM Campaign", "utmCampaign"]) || "",
   };
 }
 
@@ -210,6 +223,8 @@ function normalizePrecos(row, siteKey) {
   if (!ts) return null;
   const url = getValue(row, ["URL", "url"]) || "";
   const returning = getReturningValue(row);
+  const userAgent = getValue(row, ["User Agent", "user agent"]) || "";
+  const derived = userAgent ? parseUserAgent(userAgent) : {};
   return {
     siteKey,
     ts,
@@ -218,11 +233,22 @@ function normalizePrecos(row, siteKey) {
     referrer: getValue(row, ["Referrer", "referrer"]) || "",
     timezone: getValue(row, ["Timezone", "timezone"]) || "",
     sessionId: getValue(row, ["Session ID", "session id"]) || "",
-    os: getValue(row, ["Sistema Operacional", "sistema operacional"]) || "",
-    browser: getValue(row, ["Navegador", "navegador"]) || "",
-    deviceType: normalizeDeviceType(getValue(row, ["Dispositivo", "dispositivo"])),
+    os: getValue(row, ["Sistema Operacional", "sistema operacional"]) || derived.os || "",
+    browser: getValue(row, ["Navegador", "navegador"]) || derived.browser || "",
+    deviceType: normalizeDeviceType(getValue(row, ["Dispositivo", "dispositivo"]) || derived.deviceType),
     returning,
-    userAgent: getValue(row, ["User Agent", "user agent"]) || undefined,
+    userAgent: userAgent || undefined,
+    language: getValue(row, ["language", "Language", "Idioma"]) || "",
+    screenWidth: toNumber(getValue(row, ["screenWidth", "Screen Width"])),
+    screenHeight: toNumber(getValue(row, ["screenHeight", "Screen Height"])),
+    connectionType: getValue(row, ["connectionType", "Connection Type"]) || "",
+    loadTime: toNumber(getValue(row, ["loadTime", "Load Time"])),
+    firstContentfulPaint: toNumber(getValue(row, ["firstContentfulPaint", "First Contentful Paint"])),
+    domInteractiveTime: toNumber(getValue(row, ["domInteractiveTime", "DOM Interactive Time"])),
+    isMobile: parseBool(getValue(row, ["isMobile", "Is Mobile"])),
+    utmSource: getValue(row, ["utmSource", "UTM Source"]) || "",
+    utmMedium: getValue(row, ["utmMedium", "UTM Medium"]) || "",
+    utmCampaign: getValue(row, ["utmCampaign", "UTM Campaign"]) || "",
   };
 }
 
@@ -252,6 +278,17 @@ function normalizeVbp(row) {
     deviceType: normalizeDeviceType(getValue(row, ["device", "Device"]) || derived.deviceType),
     returning,
     userAgent: userAgent || undefined,
+    language: getValue(row, ["language", "Language"]) || "",
+    screenWidth: toNumber(getValue(row, ["screenWidth", "Screen Width"])),
+    screenHeight: toNumber(getValue(row, ["screenHeight", "Screen Height"])),
+    connectionType: getValue(row, ["connectionType", "Connection Type"]) || "",
+    loadTime: toNumber(getValue(row, ["loadTime", "Load Time"])),
+    firstContentfulPaint: toNumber(getValue(row, ["firstContentfulPaint", "First Contentful Paint"])),
+    domInteractiveTime: toNumber(getValue(row, ["domInteractiveTime", "DOM Interactive Time"])),
+    isMobile: parseBool(getValue(row, ["isMobile", "Is Mobile"])),
+    utmSource: getValue(row, ["utmSource", "UTM Source"]) || "",
+    utmMedium: getValue(row, ["utmMedium", "UTM Medium"]) || "",
+    utmCampaign: getValue(row, ["utmCampaign", "UTM Campaign"]) || "",
   };
 }
 
@@ -342,6 +379,12 @@ function parseBool(value) {
   return normalized === "true" || normalized === "yes" || normalized === "sim" || normalized === "1";
 }
 
+function toNumber(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const num = Number(value);
+  return isNaN(num) ? null : num;
+}
+
 function normalizeDeviceType(value) {
   if (!value) return "Unknown";
   const normalized = String(value).toLowerCase();
@@ -393,8 +436,27 @@ function renderOverview() {
     return { key: site.key, last };
   });
 
+  // Mobile %
+  const mobileCount = state.data.filter((r) => r.isMobile === true || r.deviceType === "Mobile").length;
+  const mobilePct = totalVisits > 0 ? ((mobileCount / totalVisits) * 100).toFixed(1) + "%" : "N/D";
+
+  // Avg load time
+  const loadTimes = state.data.map((r) => r.loadTime).filter((v) => v && v > 0);
+  const avgLoad = loadTimes.length ? (loadTimes.reduce((a, b) => a + b, 0) / loadTimes.length / 1000).toFixed(2) + "s" : "N/D";
+
+  // Top browser
+  const browserCounts = aggregateCounts(state.data, (r) => r.browser || "Unknown");
+  const topBrowser = browserCounts.length ? browserCounts[0][0] : "N/D";
+
+  // Returning rate
+  const returningRate = computeReturningRate(state.data);
+
   cards.appendChild(makeCard("Total de acessos", formatNumber(totalVisits)));
   cards.appendChild(makeCard("Sessoes unicas", formatNumber(uniqueSessions)));
+  cards.appendChild(makeCard("Mobile %", mobilePct));
+  cards.appendChild(makeCard("Tempo medio de carga", avgLoad));
+  cards.appendChild(makeCard("Top Browser", topBrowser));
+  cards.appendChild(makeCard("Returning rate", returningRate));
 
   lastBySite.forEach((entry) => {
     const site = CONFIG.sites.find((item) => item.key === entry.key);
@@ -402,6 +464,9 @@ function renderOverview() {
   });
 
   renderOverviewChart();
+  renderOverviewDevices();
+  renderOverviewBrowsers();
+  renderOverviewReturning();
   renderTopPeriods();
 }
 
@@ -418,6 +483,7 @@ function renderSite(siteKey) {
   renderSiteKpis(rows, filtered);
   renderSiteChart(siteKey, filtered);
   renderDistributions(rows);
+  renderPerformanceKpis(rows);
   renderLatest(rows);
 }
 
@@ -449,6 +515,29 @@ function renderOverviewChart() {
   renderLineChart("overview-chart", labels, datasets, "Visitas");
 }
 
+function renderOverviewDevices() {
+  const counts = { Mobile: 0, Desktop: 0, Tablet: 0 };
+  state.data.forEach((r) => {
+    const type = r.deviceType || "Unknown";
+    if (type === "Mobile") counts.Mobile++;
+    else if (type === "Tablet") counts.Tablet++;
+    else if (type === "Desktop") counts.Desktop++;
+  });
+  renderDoughnutChart("overview-devices-chart", Object.entries(counts), "Dispositivos");
+}
+
+function renderOverviewBrowsers() {
+  const counts = aggregateCounts(state.data, (r) => r.browser || "Unknown");
+  renderBarChart("overview-browsers-chart", counts, "Browser");
+}
+
+function renderOverviewReturning() {
+  const known = state.data.filter((r) => r.returning !== undefined);
+  const returning = known.filter((r) => r.returning).length;
+  const newVisitors = known.length - returning;
+  renderDoughnutChart("overview-returning-chart", [["Novos", newVisitors], ["Retornantes", returning]], "Visitantes");
+}
+
 function renderSiteChart(siteKey, records) {
   const { labels, series } = buildSeries(records, state.filters.granularity, false);
   const site = CONFIG.sites.find((item) => item.key === siteKey);
@@ -471,10 +560,34 @@ function renderDistributions(records) {
   const tzCounts = aggregateCounts(records, (row) => row.timezone || "Unknown");
   const refCounts = aggregateCounts(records, (row) => normalizeReferrer(row.referrer));
   const osCounts = aggregateCounts(records, (row) => row.os || "Unknown");
+  const browserCounts = aggregateCounts(records, (row) => row.browser || "Unknown");
+  const deviceCounts = aggregateCounts(records, (row) => row.deviceType || "Unknown");
+  const langCounts = aggregateCounts(records, (row) => row.language || "Unknown");
 
   renderBarChart("tz-chart", tzCounts, "Timezone");
   renderBarChart("ref-chart", refCounts, "Referrer");
   renderBarChart("os-chart", osCounts, "OS");
+  renderBarChart("browser-chart", browserCounts, "Browser");
+  renderDoughnutChart("device-chart", deviceCounts, "Dispositivo");
+  renderBarChart("lang-chart", langCounts, "Idioma");
+}
+
+function renderPerformanceKpis(records) {
+  const target = document.getElementById("site-performance");
+  if (!target) return;
+  target.innerHTML = "";
+
+  const metrics = [
+    { label: "Tempo medio de carga", key: "loadTime", divisor: 1000, unit: "s" },
+    { label: "FCP medio", key: "firstContentfulPaint", divisor: 1000, unit: "s" },
+    { label: "DOM Interactive", key: "domInteractiveTime", divisor: 1000, unit: "s" },
+  ];
+
+  metrics.forEach((m) => {
+    const values = records.map((r) => r[m.key]).filter((v) => v && v > 0);
+    const avg = values.length ? (values.reduce((a, b) => a + b, 0) / values.length / m.divisor).toFixed(2) + m.unit : "N/D";
+    target.appendChild(makeCard(m.label, avg));
+  });
 }
 
 function renderLatest(records) {
@@ -489,7 +602,9 @@ function renderLatest(records) {
       <td>${row.path || row.url || "--"}</td>
       <td>${normalizeReferrer(row.referrer)}</td>
       <td>${row.timezone || "--"}</td>
-      <td>${[row.os, row.deviceType].filter(Boolean).join(" / ") || "--"}</td>
+      <td>${row.os || "--"}</td>
+      <td>${row.browser || "--"}</td>
+      <td>${row.deviceType || "--"}</td>
     `;
     table.appendChild(tr);
   });
@@ -704,6 +819,41 @@ function renderBarChart(canvasId, entries, label) {
       },
     },
     plugins: [barTopLabels],
+  });
+}
+
+function renderDoughnutChart(canvasId, entries, label) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+
+  if (state.charts[canvasId]) {
+    state.charts[canvasId].destroy();
+  }
+
+  const labels = entries.map((e) => e[0]);
+  const values = entries.map((e) => e[1]);
+  const doughnutColors = ["#38bdf8", "#22c55e", "#a855f7", "#f59e0b", "#ef4444", "#14b8a6", "#ec4899", "#6366f1"];
+
+  state.charts[canvasId] = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels,
+      datasets: [
+        {
+          label,
+          data: values,
+          backgroundColor: doughnutColors.slice(0, labels.length),
+          borderWidth: 0,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "bottom", labels: { color: getComputedStyle(document.body).color, padding: 12 } },
+      },
+    },
   });
 }
 
