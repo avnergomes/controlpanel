@@ -126,13 +126,20 @@ async function fetchAllSites() {
 
   try {
     const url = `${CONFIG.proxyUrl}?token=${encodeURIComponent(CONFIG.proxyToken)}`;
-    const response = await fetch(url);
+    const response = await fetch(url, { redirect: "follow" });
 
     if (!response.ok) {
       throw new Error(`Proxy error: ${response.status}`);
     }
 
-    const payload = await response.json();
+    const text = await response.text();
+    let payload;
+    try {
+      payload = JSON.parse(text);
+    } catch (parseErr) {
+      console.error("[ControlPanel] Resposta nao-JSON do proxy:", text.substring(0, 500));
+      throw new Error("Resposta invalida do proxy");
+    }
 
     if (payload.error) {
       throw new Error(payload.error);
@@ -156,6 +163,7 @@ async function fetchAllSites() {
     for (const site of CONFIG.sites) {
       status[site.key] = "error";
     }
+    console.error("[ControlPanel] Erro no fetch:", error);
     showToast("Erro ao conectar ao proxy");
   }
 
