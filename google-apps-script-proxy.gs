@@ -23,7 +23,7 @@ const SITES = [
     key: 'datageoparana',
     name: 'Datageo Parana',
     sheetId: '1UIhobwGjfmAoPY6COppYsp_sNcfCSjANH6RiPZcJTMY',
-    gids: [1349286283],
+    gids: [701835007],
     kind: 'precos',
   },
   {
