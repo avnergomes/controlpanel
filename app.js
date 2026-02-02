@@ -18,6 +18,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.body.classList.add("loaded");
   bindNavigation();
   bindControls();
+  requestNotificationPermission();
   document.getElementById("refresh-btn").addEventListener("click", () => refreshData(true));
 
   const cached = loadCache();
@@ -99,6 +100,7 @@ function renderCurrentView() {
 
 async function refreshData(force) {
   const previousMax = getMaxTimestamp(state.data);
+  const previousCount = state.data.length;
   const { data, status } = await fetchAllSites();
   const nextMax = getMaxTimestamp(data);
 
@@ -107,6 +109,10 @@ async function refreshData(force) {
   updateStatus();
 
   if (force || !previousMax || (nextMax && nextMax > previousMax)) {
+    if (previousCount > 0 && data.length > previousCount) {
+      const newRows = data.slice(previousCount);
+      newRows.forEach((row) => notifyNewVisit(row));
+    }
     state.data = data;
     indexData();
     saveCache();
@@ -823,4 +829,25 @@ function loadCache() {
   } catch {
     return null;
   }
+}
+
+function requestNotificationPermission() {
+  if ("Notification" in window && Notification.permission === "default") {
+    Notification.requestPermission();
+  }
+}
+
+function notifyNewVisit(row) {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+
+  const site = CONFIG.sites.find((s) => s.key === row.siteKey);
+  const siteName = site ? site.name : row.siteKey;
+  const localTime = row.ts ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "medium" }).format(row.ts) : "--";
+  const tz = row.timezone || "N/A";
+
+  new Notification("Novo acesso", {
+    body: `${siteName} — ${localTime} — ${tz}`,
+    icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230f766e'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='system-ui' font-weight='700' font-size='16' fill='white'%3ECP%3C/text%3E%3C/svg%3E",
+    tag: `visit-${row.siteKey}-${row.ts?.getTime() || Date.now()}`,
+  });
 }
