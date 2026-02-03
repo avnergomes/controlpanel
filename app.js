@@ -12,7 +12,7 @@
   },
 };
 
-const CACHE_KEY = "controlpanel-cache-v3";
+const CACHE_KEY = "controlpanel-cache-v4";
 
 document.addEventListener("DOMContentLoaded", () => {
   document.body.classList.add("loaded");
@@ -161,6 +161,15 @@ async function fetchAllSites() {
         console.log(`[ControlPanel] ${site.key} sample row:`, JSON.stringify(rows[0]).substring(0, 500));
       }
       const normalized = normalizeSiteRows(site, rows);
+      // Debug: log performance values for first 3 rows
+      const withPerf = normalized.filter(r => r && (r.loadTime || r.firstContentfulPaint || r.domInteractiveTime));
+      console.log(`[ControlPanel] ${site.key} perf: ${withPerf.length}/${normalized.length} rows have performance data`);
+      if (withPerf.length > 0) {
+        console.log(`[ControlPanel] ${site.key} perf sample:`, { loadTime: withPerf[0].loadTime, fcp: withPerf[0].firstContentfulPaint, domI: withPerf[0].domInteractiveTime });
+      } else if (normalized.length > 0) {
+        const raw0 = rows[0];
+        console.log(`[ControlPanel] ${site.key} raw perf keys check:`, { LoadTime: raw0["LoadTime"], loadTime: raw0["loadTime"], "Page Load Time (ms)": raw0["Page Load Time (ms)"] });
+      }
       results.push(...dedupeRows(normalized));
     }
   } catch (error) {
@@ -212,9 +221,9 @@ function normalizePortfolio(row) {
     screenWidth: toNumber(getValue(row, ["Screen Width", "screenWidth", "screenResolution"])),
     screenHeight: toNumber(getValue(row, ["Screen Height", "screenHeight"])),
     connectionType: getValue(row, ["Connection Type", "connectionType"]) || "",
-    loadTime: toNumber(getValue(row, ["Page Load Time", "pageLoadTime", "loadTime"])),
-    firstContentfulPaint: toNumber(getValue(row, ["First Contentful Paint", "firstContentfulPaint"])),
-    domInteractiveTime: toNumber(getValue(row, ["DOM Interactive Time", "domInteractiveTime"])),
+    loadTime: toNumber(getValue(row, ["Page Load Time (ms)", "Page Load Time", "pageLoadTime", "loadTime", "LoadTime"])),
+    firstContentfulPaint: toNumber(getValue(row, ["First Contentful Paint", "firstContentfulPaint", "FirstContentfulPaint"])),
+    domInteractiveTime: toNumber(getValue(row, ["DOM Interactive Time", "domInteractiveTime", "DomInteractiveTime"])),
     isMobile: parseBool(getValue(row, ["isMobile", "Is Mobile"])),
     utmSource: getValue(row, ["UTM Source", "utmSource"]) || "",
     utmMedium: getValue(row, ["UTM Medium", "utmMedium"]) || "",
@@ -246,9 +255,9 @@ function normalizePrecos(row, siteKey) {
     screenWidth: toNumber(getValue(row, ["screenWidth", "Screen Width"])),
     screenHeight: toNumber(getValue(row, ["screenHeight", "Screen Height"])),
     connectionType: getValue(row, ["connectionType", "Connection Type"]) || "",
-    loadTime: toNumber(getValue(row, ["loadTime", "Load Time"])),
-    firstContentfulPaint: toNumber(getValue(row, ["firstContentfulPaint", "First Contentful Paint"])),
-    domInteractiveTime: toNumber(getValue(row, ["domInteractiveTime", "DOM Interactive Time"])),
+    loadTime: toNumber(getValue(row, ["LoadTime", "loadTime", "Load Time"])),
+    firstContentfulPaint: toNumber(getValue(row, ["firstContentfulPaint", "FirstContentfulPaint", "First Contentful Paint"])),
+    domInteractiveTime: toNumber(getValue(row, ["domInteractiveTime", "DomInteractiveTime", "DOM Interactive Time"])),
     isMobile: parseBool(getValue(row, ["isMobile", "Is Mobile"])),
     utmSource: getValue(row, ["utmSource", "UTM Source"]) || "",
     utmMedium: getValue(row, ["utmMedium", "UTM Medium"]) || "",
@@ -286,9 +295,9 @@ function normalizeVbp(row) {
     screenWidth: toNumber(getValue(row, ["screenWidth", "Screen Width"])),
     screenHeight: toNumber(getValue(row, ["screenHeight", "Screen Height"])),
     connectionType: getValue(row, ["connectionType", "Connection Type"]) || "",
-    loadTime: toNumber(getValue(row, ["loadTime", "Load Time"])),
-    firstContentfulPaint: toNumber(getValue(row, ["firstContentfulPaint", "First Contentful Paint"])),
-    domInteractiveTime: toNumber(getValue(row, ["domInteractiveTime", "DOM Interactive Time"])),
+    loadTime: toNumber(getValue(row, ["LoadTime", "loadTime", "Load Time"])),
+    firstContentfulPaint: toNumber(getValue(row, ["firstContentfulPaint", "FirstContentfulPaint", "First Contentful Paint"])),
+    domInteractiveTime: toNumber(getValue(row, ["domInteractiveTime", "DomInteractiveTime", "DOM Interactive Time"])),
     isMobile: parseBool(getValue(row, ["isMobile", "Is Mobile"])),
     utmSource: getValue(row, ["utmSource", "UTM Source"]) || "",
     utmMedium: getValue(row, ["utmMedium", "UTM Medium"]) || "",
