@@ -156,6 +156,10 @@ async function fetchAllSites() {
 
       status[site.key] = "ok";
       const rows = siteData.rows || [];
+      if (rows.length > 0) {
+        console.log(`[ControlPanel] ${site.key} columns:`, Object.keys(rows[0]));
+        console.log(`[ControlPanel] ${site.key} sample row:`, JSON.stringify(rows[0]).substring(0, 500));
+      }
       const normalized = normalizeSiteRows(site, rows);
       results.push(...dedupeRows(normalized));
     }
