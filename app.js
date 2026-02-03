@@ -12,7 +12,7 @@
   },
 };
 
-const CACHE_KEY = "controlpanel-cache-v4";
+const CACHE_KEY = "controlpanel-cache-v5";
 
 document.addEventListener("DOMContentLoaded", () => {
   document.body.classList.add("loaded");
@@ -199,9 +199,9 @@ function normalizePortfolio(row) {
     referrer: getValue(row, ["Referrer", "referrer"]) || "",
     timezone: getValue(row, ["Timezone", "timezone"]) || "",
     sessionId: getValue(row, ["Session ID", "session id"]) || "",
-    os: getValue(row, ["OS", "os"]) || derived.os || "",
-    browser: getValue(row, ["Browser", "browser"]) || derived.browser || "",
-    deviceType: normalizeDeviceType(getValue(row, ["Device", "device", "deviceType"]) || derived.deviceType),
+    os: getValue(row, ["os", "OS", "Sistema Operacional"]) || derived.os || "",
+    browser: getValue(row, ["browser", "Browser", "Navegador"]) || derived.browser || "",
+    deviceType: normalizeDeviceType(getValue(row, ["deviceType", "Device Type", "device", "Device"]) || derived.deviceType),
     returning,
     userAgent: userAgent || undefined,
     language: getValue(row, ["Language", "language"]) || "",
@@ -233,9 +233,9 @@ function normalizePrecos(row, siteKey) {
     referrer: getValue(row, ["Referrer", "referrer"]) || "",
     timezone: getValue(row, ["Timezone", "timezone"]) || "",
     sessionId: getValue(row, ["Session ID", "session id"]) || "",
-    os: getValue(row, ["Sistema Operacional", "sistema operacional"]) || derived.os || "",
-    browser: getValue(row, ["Navegador", "navegador"]) || derived.browser || "",
-    deviceType: normalizeDeviceType(getValue(row, ["Dispositivo", "dispositivo"]) || derived.deviceType),
+    os: getValue(row, ["os", "OS", "Sistema Operacional", "sistema operacional"]) || derived.os || "",
+    browser: getValue(row, ["browser", "Browser", "Navegador", "navegador"]) || derived.browser || "",
+    deviceType: normalizeDeviceType(getValue(row, ["deviceType", "Device Type", "Dispositivo", "dispositivo"]) || derived.deviceType),
     returning,
     userAgent: userAgent || undefined,
     language: getValue(row, ["language", "Language", "Idioma"]) || "",
@@ -273,9 +273,9 @@ function normalizeVbp(row) {
     referrer: getValue(row, ["referrer", "Referrer"]) || "",
     timezone,
     sessionId: getValue(row, ["sessionId", "Session ID", "session id"]) || "",
-    os: getValue(row, ["os", "OS"]) || derived.os || "",
-    browser: getValue(row, ["browser", "Browser"]) || derived.browser || "",
-    deviceType: normalizeDeviceType(getValue(row, ["device", "Device"]) || derived.deviceType),
+    os: getValue(row, ["os", "OS", "Sistema Operacional"]) || derived.os || "",
+    browser: getValue(row, ["browser", "Browser", "Navegador"]) || derived.browser || "",
+    deviceType: normalizeDeviceType(getValue(row, ["deviceType", "Device Type", "device", "Device", "Dispositivo"]) || derived.deviceType),
     returning,
     userAgent: userAgent || undefined,
     language: getValue(row, ["language", "Language"]) || "",
