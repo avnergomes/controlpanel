@@ -156,20 +156,7 @@ async function fetchAllSites() {
 
       status[site.key] = "ok";
       const rows = siteData.rows || [];
-      if (rows.length > 0) {
-        console.log(`[ControlPanel] ${site.key} columns:`, Object.keys(rows[0]));
-        console.log(`[ControlPanel] ${site.key} sample row:`, JSON.stringify(rows[0]).substring(0, 500));
-      }
       const normalized = normalizeSiteRows(site, rows);
-      // Debug: log performance values for first 3 rows
-      const withPerf = normalized.filter(r => r && (r.loadTime || r.firstContentfulPaint || r.domInteractiveTime));
-      console.log(`[ControlPanel] ${site.key} perf: ${withPerf.length}/${normalized.length} rows have performance data`);
-      if (withPerf.length > 0) {
-        console.log(`[ControlPanel] ${site.key} perf sample:`, { loadTime: withPerf[0].loadTime, fcp: withPerf[0].firstContentfulPaint, domI: withPerf[0].domInteractiveTime });
-      } else if (normalized.length > 0) {
-        const raw0 = rows[0];
-        console.log(`[ControlPanel] ${site.key} raw perf keys check:`, { LoadTime: raw0["LoadTime"], loadTime: raw0["loadTime"], "Page Load Time (ms)": raw0["Page Load Time (ms)"] });
-      }
       results.push(...dedupeRows(normalized));
     }
   } catch (error) {
@@ -455,7 +442,7 @@ function renderOverview() {
 
   // Avg load time
   const loadTimes = state.data.map((r) => r.loadTime).filter((v) => v && v > 0);
-  const avgLoad = loadTimes.length ? (loadTimes.reduce((a, b) => a + b, 0) / loadTimes.length / 1000).toFixed(2) + "s" : "N/D";
+  const avgLoad = loadTimes.length ? (loadTimes.reduce((a, b) => a + b, 0) / loadTimes.length / 1000).toFixed(2) + "s" : "sem dados";
 
   // Top browser
   const browserCounts = aggregateCounts(state.data, (r) => r.browser || "Unknown");
@@ -596,11 +583,20 @@ function renderPerformanceKpis(records) {
     { label: "DOM Interactive", key: "domInteractiveTime", divisor: 1000, unit: "s" },
   ];
 
+  let hasAny = false;
   metrics.forEach((m) => {
     const values = records.map((r) => r[m.key]).filter((v) => v && v > 0);
+    if (values.length) hasAny = true;
     const avg = values.length ? (values.reduce((a, b) => a + b, 0) / values.length / m.divisor).toFixed(2) + m.unit : "N/D";
     target.appendChild(makeCard(m.label, avg));
   });
+
+  if (!hasAny) {
+    const note = document.createElement("p");
+    note.className = "perf-note";
+    note.textContent = "Dados de performance nao disponiveis — os scripts de rastreamento nao estao capturando metricas de timing.";
+    target.appendChild(note);
+  }
 }
 
 function renderLatest(records) {
