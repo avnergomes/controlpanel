@@ -468,8 +468,12 @@ function renderOverview() {
   const uniqueSessions = new Set(state.data.map((row) => row.sessionId).filter(Boolean)).size;
   const lastBySite = CONFIG.sites.map((site) => {
     const rows = state.bySite[site.key] || [];
-    const last = rows.length ? rows[rows.length - 1].ts : null;
-    return { key: site.key, last };
+    const lastRow = rows.length ? rows[rows.length - 1] : null;
+    return {
+      key: site.key,
+      last: lastRow ? lastRow.ts : null,
+      timezone: lastRow ? lastRow.timezone : null
+    };
   });
 
   // Mobile %
@@ -496,7 +500,10 @@ function renderOverview() {
 
   lastBySite.forEach((entry) => {
     const site = CONFIG.sites.find((item) => item.key === entry.key);
-    cards.appendChild(makeCard(`Ultimo acesso - ${site.name}`, entry.last ? formatDateTime(entry.last) : "--"));
+    const value = entry.last
+      ? `${formatDateTime(entry.last)}${entry.timezone ? ` (${entry.timezone})` : ''}`
+      : "--";
+    cards.appendChild(makeCard(`Ultimo acesso - ${site.name}`, value));
   });
 
   renderOverviewChart();
