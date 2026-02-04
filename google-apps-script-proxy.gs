@@ -61,6 +61,13 @@ const SITES = [
     gids: [1237498394],
     kind: 'precos',
   },
+  {
+    key: 'comexstat-parana',
+    name: 'ComexStat Parana',
+    sheetId: '1b2fAHbUvM1waszTOsR81KqVYuZhhnGUTpfXusHLC8L8',  // Substitua pelo ID da planilha do ComexStat
+    gids: '0',  // Substitua pelo GID da aba de tracking
+    kind: 'comex',
+  },
 ];
 
 const CACHE_SECONDS = 180;
