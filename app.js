@@ -179,6 +179,8 @@ function normalizeSiteRows(site, rows) {
       return rows.map((row) => normalizeVbp(row)).filter(Boolean);
     case "precos":
       return rows.map((row) => normalizePrecos(row, site.key)).filter(Boolean);
+    case "comex":
+      return rows.map((row) => normalizeComex(row, site.key)).filter(Boolean);
     default:
       return [];
   }
@@ -245,6 +247,40 @@ function normalizePrecos(row, siteKey) {
     loadTime: toNumber(getValue(row, ["LoadTime", "loadTime", "Load Time"])),
     firstContentfulPaint: toNumber(getValue(row, ["firstContentfulPaint", "FirstContentfulPaint", "First Contentful Paint"])),
     domInteractiveTime: toNumber(getValue(row, ["domInteractiveTime", "DomInteractiveTime", "DOM Interactive Time"])),
+    isMobile: parseBool(getValue(row, ["isMobile", "Is Mobile"])),
+    utmSource: getValue(row, ["utmSource", "UTM Source"]) || "",
+    utmMedium: getValue(row, ["utmMedium", "UTM Medium"]) || "",
+    utmCampaign: getValue(row, ["utmCampaign", "UTM Campaign"]) || "",
+  };
+}
+
+function normalizeComex(row, siteKey) {
+  const ts = parseDate(getValue(row, ["timestamp", "Timestamp"]));
+  if (!ts) return null;
+  const url = getValue(row, ["page", "URL", "url"]) || "";
+  const returning = getReturningValue(row);
+  const userAgent = getValue(row, ["userAgent", "User Agent", "user agent"]) || "";
+  const derived = userAgent ? parseUserAgent(userAgent) : {};
+  return {
+    siteKey,
+    ts,
+    url,
+    path: getValue(row, ["pathname", "Pathname"]) || extractPath(url),
+    referrer: getValue(row, ["referrer", "Referrer"]) || "",
+    timezone: getValue(row, ["timezone", "Timezone"]) || "",
+    sessionId: getValue(row, ["sessionId", "Session ID", "session id"]) || "",
+    os: derived.os || "",
+    browser: derived.browser || "",
+    deviceType: normalizeDeviceType(derived.deviceType),
+    returning,
+    userAgent: userAgent || undefined,
+    language: getValue(row, ["language", "Language"]) || "",
+    screenWidth: toNumber(getValue(row, ["screenWidth", "Screen Width"])),
+    screenHeight: toNumber(getValue(row, ["screenHeight", "Screen Height"])),
+    connectionType: getValue(row, ["connectionType", "Connection Type"]) || "",
+    loadTime: toNumber(getValue(row, ["loadTime", "LoadTime", "Load Time"])),
+    firstContentfulPaint: toNumber(getValue(row, ["firstContentfulPaint", "FirstContentfulPaint"])),
+    domInteractiveTime: toNumber(getValue(row, ["domInteractiveTime", "DomInteractiveTime"])),
     isMobile: parseBool(getValue(row, ["isMobile", "Is Mobile"])),
     utmSource: getValue(row, ["utmSource", "UTM Source"]) || "",
     utmMedium: getValue(row, ["utmMedium", "UTM Medium"]) || "",
@@ -897,6 +933,7 @@ function pickColor(index) {
     "#f59e0b", // Precos Florestais
     "#ef4444", // Precos de Terras
     "#14b8a6", // Precos Diarios
+    "#3b82f6", // ComexStat Parana
   ];
   return palette[index % palette.length];
 }
