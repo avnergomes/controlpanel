@@ -12,5 +12,6 @@
     { key: "precos-terras", name: "Precos de Terras", kind: "precos" },
     { key: "precos-diarios", name: "Precos Diarios", kind: "precos" },
     { key: "comexstat-parana", name: "ComexStat Parana", kind: "comex" },
+    { key: "emprego-agro-parana", name: "Emprego Agro Parana", kind: "emprego" },
   ],
 };

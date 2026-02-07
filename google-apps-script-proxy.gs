@@ -68,6 +68,13 @@ const SITES = [
     gids: [0],
     kind: 'comex',
   },
+  {
+    key: 'emprego-agro-parana',
+    name: 'Emprego Agro Parana',
+    sheetId: 'SEU_SHEET_ID_AQUI',  // TODO: Substituir pelo ID da planilha criada
+    gids: [0],
+    kind: 'emprego',
+  },
 ];
 
 const CACHE_SECONDS = 180;
