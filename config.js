@@ -2,7 +2,7 @@
   pollMs: 60000,
   cacheMinutes: 10,
   maxLatest: 25,
-  proxyUrl: "https://script.google.com/macros/s/AKfycbyk8VzLygqFmid0cSB5Qge8yRKRV-hJNvWlCSZBPrOCnyJyTd21d-6mNRjyJ7NIr_-36Q/exec",
+  proxyUrl: "https://script.google.com/macros/s/AKfycbyk8VzLygqFmid0cSB5Qge8yRKRV-hJNvWICSZBPrOCnyJyTd21d-6mNRjyJ7Nlr_36Q/exec",
   proxyToken: "eb7f92a4-001d-4fac-a0fc-d42f0119491c",
   sites: [
     { key: "datageoparana", name: "Datageo Parana", kind: "precos" },
