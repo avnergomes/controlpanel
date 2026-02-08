@@ -3,7 +3,7 @@ const CONFIG = {
   cacheMinutes: 10,
   maxLatest: 25,
   proxyUrl: "https://script.google.com/macros/s/AKfycbyk8VzLygqFmid0cSB5Qge8yRKRV-hJNvWlCSZBPrOCnyJyTd21d-6mNRjyJ7NIr_-36Q/exec",
-  proxyToken: "eb7f92a4-001d-4fac-a0fc-d42f0119491c",
+  // Token removido - autenticação agora é feita via session token do servidor
   sites: [
     { key: "datageoparana", name: "Datageo Parana", kind: "datageo" },
     { key: "portfolio", name: "Portfolio", kind: "portfolio" },
