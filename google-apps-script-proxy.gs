@@ -16,7 +16,7 @@
 
 // ── Configuracao (server-side, nunca exposta ao cliente) ──────
 
-const AUTH_TOKEN = 'SEU_TOKEN_ALEATORIO_AQUI';
+const AUTH_TOKEN = 'eb7f92a4-001d-4fac-a0fc-d42f0119491c';
 
 const SITES = [
   {

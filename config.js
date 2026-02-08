@@ -3,7 +3,7 @@
   cacheMinutes: 10,
   maxLatest: 25,
   proxyUrl: "https://script.google.com/macros/s/AKfycbyk8VzLygqFmid0cSB5Qge8yRKRV-hJNvWlCSZBPrOCnyJyTd21d-6mNRjyJ7NIr_-36Q/exec",
-  proxyToken: "a3f1b2c4-5d6e-7f8a-9b0c-1d2e3f4a5b6c",
+  proxyToken: "eb7f92a4-001d-4fac-a0fc-d42f0119491c",
   sites: [
     { key: "datageoparana", name: "Datageo Parana", kind: "precos" },
     { key: "portfolio", name: "Portfolio", kind: "portfolio" },

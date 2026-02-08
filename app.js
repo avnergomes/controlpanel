@@ -13,8 +13,42 @@
 };
 
 const CACHE_KEY = "controlpanel-cache-v5";
+const AUTH_HASH = "dcf887743f1db891e54fbf07efeda87afaa6cfe596c0e9369072ec4b0eca7c1e";
+const AUTH_SESSION_KEY = "controlpanel-auth";
 
-document.addEventListener("DOMContentLoaded", () => {
+// SHA-256 hash function
+async function sha256(message) {
+  const msgBuffer = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// Check if user is authenticated
+function isAuthenticated() {
+  return sessionStorage.getItem(AUTH_SESSION_KEY) === AUTH_HASH;
+}
+
+// Handle login
+async function handleLogin(event) {
+  event.preventDefault();
+  const password = document.getElementById("login-password").value;
+  const hash = await sha256(password);
+  const errorEl = document.getElementById("login-error");
+
+  if (hash === AUTH_HASH) {
+    sessionStorage.setItem(AUTH_SESSION_KEY, AUTH_HASH);
+    document.getElementById("login-overlay").classList.add("hidden");
+    initApp();
+  } else {
+    errorEl.hidden = false;
+    document.getElementById("login-password").value = "";
+    document.getElementById("login-password").focus();
+  }
+}
+
+// Initialize app after authentication
+function initApp() {
   document.body.classList.add("loaded");
   bindNavigation();
   bindControls();
@@ -32,7 +66,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
   refreshData(false);
   setInterval(() => refreshData(false), CONFIG.pollMs);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  // Setup login form handler
+  document.getElementById("login-form").addEventListener("submit", handleLogin);
+
+  // Check if already authenticated
+  if (isAuthenticated()) {
+    document.getElementById("login-overlay").classList.add("hidden");
+    initApp();
+  }
 });
+
 
 function bindNavigation() {
   window.addEventListener("hashchange", renderCurrentView);
@@ -649,15 +695,20 @@ function renderLatest(records) {
   const sorted = [...records].sort((a, b) => b.ts - a.ts).slice(0, CONFIG.maxLatest);
   sorted.forEach((row) => {
     const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${formatDateTime(row.ts)}</td>
-      <td>${row.path || row.url || "--"}</td>
-      <td>${normalizeReferrer(row.referrer)}</td>
-      <td>${row.timezone || "--"}</td>
-      <td>${row.os || "--"}</td>
-      <td>${row.browser || "--"}</td>
-      <td>${row.deviceType || "--"}</td>
-    `;
+    const cells = [
+      formatDateTime(row.ts),
+      row.path || row.url || "--",
+      normalizeReferrer(row.referrer),
+      row.timezone || "--",
+      row.os || "--",
+      row.browser || "--",
+      row.deviceType || "--",
+    ];
+    cells.forEach((text) => {
+      const td = document.createElement("td");
+      td.textContent = text;
+      tr.appendChild(td);
+    });
     table.appendChild(tr);
   });
 }
@@ -688,7 +739,12 @@ function renderTopPeriods() {
 
   pairs.slice(0, 10).forEach((entry) => {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${entry.label}</td><td>${formatNumber(entry.total)}</td>`;
+    const tdLabel = document.createElement("td");
+    tdLabel.textContent = entry.label;
+    const tdTotal = document.createElement("td");
+    tdTotal.textContent = formatNumber(entry.total);
+    tr.appendChild(tdLabel);
+    tr.appendChild(tdTotal);
     table.appendChild(tr);
   });
 }
@@ -912,7 +968,13 @@ function renderDoughnutChart(canvasId, entries, label) {
 function makeCard(title, value) {
   const card = document.createElement("div");
   card.className = "card";
-  card.innerHTML = `<h3>${title}</h3><div class="value">${value}</div>`;
+  const h3 = document.createElement("h3");
+  h3.textContent = title;
+  const div = document.createElement("div");
+  div.className = "value";
+  div.textContent = value;
+  card.appendChild(h3);
+  card.appendChild(div);
   return card;
 }
 
