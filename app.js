@@ -73,8 +73,6 @@ function initApp() {
     indexData();
     renderCurrentView();
     updateStatus();
-  } else {
-    showLoading(true);
   }
 
   refreshData(false);
