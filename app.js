@@ -227,6 +227,8 @@ function normalizeSiteRows(site, rows) {
       return rows.map((row) => normalizePrecos(row, site.key)).filter(Boolean);
     case "comex":
       return rows.map((row) => normalizeComex(row, site.key)).filter(Boolean);
+    case "emprego":
+      return rows.map((row) => normalizeEmprego(row, site.key)).filter(Boolean);
     default:
       return [];
   }
@@ -331,6 +333,39 @@ function normalizeComex(row, siteKey) {
     utmSource: getValue(row, ["utmSource", "UTM Source"]) || "",
     utmMedium: getValue(row, ["utmMedium", "UTM Medium"]) || "",
     utmCampaign: getValue(row, ["utmCampaign", "UTM Campaign"]) || "",
+  };
+}
+
+function normalizeEmprego(row, siteKey) {
+  const ts = parseDate(getValue(row, ["timestamp", "Timestamp"]));
+  if (!ts) return null;
+  const url = getValue(row, ["page", "URL", "url"]) || "";
+  const deviceTypeRaw = getValue(row, ["deviceType", "Device Type", "Dispositivo"]) || "";
+  return {
+    siteKey,
+    ts,
+    url,
+    path: getValue(row, ["pathname", "Pathname"]) || extractPath(url),
+    referrer: getValue(row, ["referrer", "Referrer"]) || "",
+    timezone: getValue(row, ["timezone", "Timezone"]) || "",
+    sessionId: getValue(row, ["sessionId", "Session ID", "session id"]) || "",
+    os: "",
+    browser: "",
+    deviceType: normalizeDeviceType(deviceTypeRaw),
+    returning: undefined,
+    language: getValue(row, ["language", "Language"]) || "",
+    screenWidth: null,
+    screenHeight: null,
+    connectionType: getValue(row, ["connectionType", "Connection Type"]) || "",
+    loadTime: toNumber(getValue(row, ["loadTime", "LoadTime", "Load Time"])),
+    firstContentfulPaint: null,
+    domInteractiveTime: null,
+    isMobile: deviceTypeRaw.toLowerCase() === "mobile",
+    utmSource: getValue(row, ["utmSource", "UTM Source"]) || "",
+    utmMedium: getValue(row, ["utmMedium", "UTM Medium"]) || "",
+    utmCampaign: getValue(row, ["utmCampaign", "UTM Campaign"]) || "",
+    screenOrientation: getValue(row, ["screenOrientation", "Screen Orientation"]) || "",
+    prefersColorScheme: getValue(row, ["prefersColorScheme", "Prefers Color Scheme"]) || "",
   };
 }
 
@@ -1003,6 +1038,7 @@ function pickColor(index) {
     "#ef4444", // Precos de Terras
     "#14b8a6", // Precos Diarios
     "#3b82f6", // ComexStat Parana
+    "#6366f1", // Emprego Agro Parana (indigo)
   ];
   return palette[index % palette.length];
 }
