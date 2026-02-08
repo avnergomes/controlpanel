@@ -1,4 +1,4 @@
-﻿const CONFIG = {
+const CONFIG = {
   pollMs: 60000,
   cacheMinutes: 10,
   maxLatest: 25,
@@ -15,3 +15,192 @@
     { key: "emprego-agro-parana", name: "Emprego Agro Parana", kind: "emprego" },
   ],
 };
+
+// Field schemas for each site type - eliminates magic strings in normalizers
+const FIELD_SCHEMAS = {
+  portfolio: {
+    timestamp: ["Client Timestamp", "Timestamp", "client timestamp"],
+    url: ["Page URL", "URL", "page url"],
+    path: ["pathname", "Pathname", "path"],
+    referrer: ["Referrer", "referrer"],
+    timezone: ["Timezone", "timezone"],
+    sessionId: ["Session ID", "session id"],
+    userAgent: ["User Agent", "user agent"],
+    os: ["os", "OS", "Sistema Operacional"],
+    browser: ["browser", "Browser", "Navegador"],
+    deviceType: ["deviceType", "Device Type", "device", "Device"],
+    language: ["Language", "language"],
+    screenWidth: ["Screen Width", "screenWidth", "screenResolution"],
+    screenHeight: ["Screen Height", "screenHeight"],
+    connectionType: ["Connection Type", "connectionType"],
+    loadTime: ["Page Load Time (ms)", "Page Load Time", "pageLoadTime", "loadTime", "LoadTime"],
+    firstContentfulPaint: ["First Contentful Paint", "firstContentfulPaint", "FirstContentfulPaint"],
+    domInteractiveTime: ["DOM Interactive Time", "domInteractiveTime", "DomInteractiveTime"],
+    isMobile: ["isMobile", "Is Mobile"],
+    utmSource: ["UTM Source", "utmSource"],
+    utmMedium: ["UTM Medium", "utmMedium"],
+    utmCampaign: ["UTM Campaign", "utmCampaign"],
+  },
+  precos: {
+    timestamp: ["Timestamp", "timestamp"],
+    url: ["URL", "url"],
+    path: ["Caminho", "caminho", "pathname", "Pathname"],
+    referrer: ["Referrer", "referrer"],
+    timezone: ["Timezone", "timezone"],
+    sessionId: ["Session ID", "session id"],
+    userAgent: ["User Agent", "user agent"],
+    os: ["os", "OS", "Sistema Operacional", "sistema operacional"],
+    browser: ["browser", "Browser", "Navegador", "navegador"],
+    deviceType: ["deviceType", "Device Type", "Dispositivo", "dispositivo"],
+    language: ["language", "Language", "Idioma"],
+    screenWidth: ["screenWidth", "Screen Width"],
+    screenHeight: ["screenHeight", "Screen Height"],
+    connectionType: ["connectionType", "Connection Type"],
+    loadTime: ["LoadTime", "loadTime", "Load Time"],
+    firstContentfulPaint: ["firstContentfulPaint", "FirstContentfulPaint", "First Contentful Paint"],
+    domInteractiveTime: ["domInteractiveTime", "DomInteractiveTime", "DOM Interactive Time"],
+    isMobile: ["isMobile", "Is Mobile"],
+    utmSource: ["utmSource", "UTM Source"],
+    utmMedium: ["utmMedium", "UTM Medium"],
+    utmCampaign: ["utmCampaign", "UTM Campaign"],
+  },
+  comex: {
+    timestamp: ["timestamp", "Timestamp"],
+    url: ["page", "URL", "url"],
+    path: ["pathname", "Pathname"],
+    referrer: ["referrer", "Referrer"],
+    timezone: ["timezone", "Timezone"],
+    sessionId: ["sessionId", "Session ID", "session id"],
+    userAgent: ["userAgent", "User Agent", "user agent"],
+    os: [],
+    browser: [],
+    deviceType: [],
+    language: ["language", "Language"],
+    screenWidth: ["screenWidth", "Screen Width"],
+    screenHeight: ["screenHeight", "Screen Height"],
+    connectionType: ["connectionType", "Connection Type"],
+    loadTime: ["loadTime", "LoadTime", "Load Time"],
+    firstContentfulPaint: ["firstContentfulPaint", "FirstContentfulPaint"],
+    domInteractiveTime: ["domInteractiveTime", "DomInteractiveTime"],
+    isMobile: ["isMobile", "Is Mobile"],
+    utmSource: ["utmSource", "UTM Source"],
+    utmMedium: ["utmMedium", "UTM Medium"],
+    utmCampaign: ["utmCampaign", "UTM Campaign"],
+  },
+  emprego: {
+    timestamp: ["timestamp", "Timestamp"],
+    url: ["page", "URL", "url"],
+    path: ["pathname", "Pathname"],
+    referrer: ["referrer", "Referrer"],
+    timezone: ["timezone", "Timezone"],
+    sessionId: ["sessionId", "Session ID", "session id"],
+    userAgent: [],
+    os: [],
+    browser: [],
+    deviceType: ["deviceType", "Device Type", "Dispositivo"],
+    language: ["language", "Language"],
+    screenWidth: [],
+    screenHeight: [],
+    connectionType: ["connectionType", "Connection Type"],
+    loadTime: ["loadTime", "LoadTime", "Load Time"],
+    firstContentfulPaint: [],
+    domInteractiveTime: [],
+    isMobile: [],
+    utmSource: ["utmSource", "UTM Source"],
+    utmMedium: ["utmMedium", "UTM Medium"],
+    utmCampaign: ["utmCampaign", "UTM Campaign"],
+    screenOrientation: ["screenOrientation", "Screen Orientation"],
+    prefersColorScheme: ["prefersColorScheme", "Prefers Color Scheme"],
+  },
+  vbp: {
+    timestamp: ["timestamp", "Timestamp", "Date", "date"],
+    url: ["url", "URL", "Page URL"],
+    path: ["page", "pathname", "path"],
+    referrer: ["referrer", "Referrer"],
+    timezone: ["timezone", "Timezone", "Fuso Horario", "Fuso horário", "Fuso", "Time Zone", "time zone", "tz", "K", "k"],
+    timezonePattern: /(fuso|time\s*zone|timezone|tz)/i,
+    sessionId: ["sessionId", "Session ID", "session id"],
+    userAgent: ["userAgent", "User Agent", "user agent"],
+    os: ["os", "OS", "Sistema Operacional"],
+    browser: ["browser", "Browser", "Navegador"],
+    deviceType: ["deviceType", "Device Type", "device", "Device", "Dispositivo"],
+    language: ["language", "Language"],
+    screenWidth: ["screenWidth", "Screen Width"],
+    screenHeight: ["screenHeight", "Screen Height"],
+    connectionType: ["connectionType", "Connection Type"],
+    loadTime: ["LoadTime", "loadTime", "Load Time"],
+    firstContentfulPaint: ["firstContentfulPaint", "FirstContentfulPaint", "First Contentful Paint"],
+    domInteractiveTime: ["domInteractiveTime", "DomInteractiveTime", "DOM Interactive Time"],
+    isMobile: ["isMobile", "Is Mobile"],
+    utmSource: ["utmSource", "UTM Source"],
+    utmMedium: ["utmMedium", "UTM Medium"],
+    utmCampaign: ["utmCampaign", "UTM Campaign"],
+  },
+};
+
+// Returning visitor field variations
+const RETURNING_FIELDS = [
+  "Returning Visitor", "returning visitor", "Returning", "returning",
+  "ReturningVisitor", "returningVisitor", "Returning_Visitor", "returning_visitor",
+  "Is Returning", "isReturning", "is_returning",
+  "Visitante Recorrente", "visitante recorrente",
+  "Retornando", "retornando", "Retorno", "retorno",
+];
+const RETURNING_PATTERN = /(return|retorn)/i;
+
+// Timezone to region mapping for geographic visualization
+const TIMEZONE_REGIONS = {
+  "America/Sao_Paulo": { region: "Brasil", subregion: "Sudeste", flag: "🇧🇷" },
+  "America/Cuiaba": { region: "Brasil", subregion: "Centro-Oeste", flag: "🇧🇷" },
+  "America/Manaus": { region: "Brasil", subregion: "Norte", flag: "🇧🇷" },
+  "America/Recife": { region: "Brasil", subregion: "Nordeste", flag: "🇧🇷" },
+  "America/Fortaleza": { region: "Brasil", subregion: "Nordeste", flag: "🇧🇷" },
+  "America/Bahia": { region: "Brasil", subregion: "Nordeste", flag: "🇧🇷" },
+  "America/Belem": { region: "Brasil", subregion: "Norte", flag: "🇧🇷" },
+  "America/Porto_Velho": { region: "Brasil", subregion: "Norte", flag: "🇧🇷" },
+  "America/Campo_Grande": { region: "Brasil", subregion: "Centro-Oeste", flag: "🇧🇷" },
+  "America/Boa_Vista": { region: "Brasil", subregion: "Norte", flag: "🇧🇷" },
+  "America/Rio_Branco": { region: "Brasil", subregion: "Norte", flag: "🇧🇷" },
+  "America/Noronha": { region: "Brasil", subregion: "Nordeste", flag: "🇧🇷" },
+  "America/New_York": { region: "EUA", subregion: "Leste", flag: "🇺🇸" },
+  "America/Los_Angeles": { region: "EUA", subregion: "Oeste", flag: "🇺🇸" },
+  "America/Chicago": { region: "EUA", subregion: "Centro", flag: "🇺🇸" },
+  "America/Denver": { region: "EUA", subregion: "Montanhas", flag: "🇺🇸" },
+  "Europe/London": { region: "Europa", subregion: "Reino Unido", flag: "🇬🇧" },
+  "Europe/Paris": { region: "Europa", subregion: "Franca", flag: "🇫🇷" },
+  "Europe/Berlin": { region: "Europa", subregion: "Alemanha", flag: "🇩🇪" },
+  "Europe/Madrid": { region: "Europa", subregion: "Espanha", flag: "🇪🇸" },
+  "Europe/Lisbon": { region: "Europa", subregion: "Portugal", flag: "🇵🇹" },
+  "Europe/Rome": { region: "Europa", subregion: "Italia", flag: "🇮🇹" },
+  "Asia/Tokyo": { region: "Asia", subregion: "Japao", flag: "🇯🇵" },
+  "Asia/Shanghai": { region: "Asia", subregion: "China", flag: "🇨🇳" },
+  "Asia/Singapore": { region: "Asia", subregion: "Singapura", flag: "🇸🇬" },
+  "Australia/Sydney": { region: "Oceania", subregion: "Australia", flag: "🇦🇺" },
+  "America/Buenos_Aires": { region: "America do Sul", subregion: "Argentina", flag: "🇦🇷" },
+  "America/Santiago": { region: "America do Sul", subregion: "Chile", flag: "🇨🇱" },
+  "America/Lima": { region: "America do Sul", subregion: "Peru", flag: "🇵🇪" },
+  "America/Bogota": { region: "America do Sul", subregion: "Colombia", flag: "🇨🇴" },
+  "America/Mexico_City": { region: "America do Norte", subregion: "Mexico", flag: "🇲🇽" },
+};
+
+// Color palette for charts
+const CHART_COLORS = {
+  sites: [
+    "#38bdf8", // Datageo Parana
+    "#22c55e", // Portfolio
+    "#a855f7", // VBP Parana
+    "#f59e0b", // Precos Florestais
+    "#ef4444", // Precos de Terras
+    "#14b8a6", // Precos Diarios
+    "#3b82f6", // ComexStat Parana
+    "#6366f1", // Emprego Agro Parana
+  ],
+  doughnut: ["#38bdf8", "#22c55e", "#a855f7", "#f59e0b", "#ef4444", "#14b8a6", "#ec4899", "#6366f1"],
+  heatmap: {
+    min: "rgba(45, 212, 191, 0.1)",
+    max: "rgba(255, 122, 24, 0.9)",
+  },
+};
+
+// Days of week in Portuguese
+const DAYS_PT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];

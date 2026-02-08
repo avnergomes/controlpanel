@@ -1,22 +1,32 @@
-﻿const state = {
+// ═══════════════════════════════════════════════════════════════════════════
+// CONTROL PANEL - Traffic Dashboard v2.0
+// Refactored with improved code quality, new visualizations, and better UX
+// ═══════════════════════════════════════════════════════════════════════════
+
+const state = {
   data: [],
   bySite: {},
   lastFetched: null,
   status: {},
   charts: {},
+  pollInterval: null,
   filters: {
     granularity: "day",
     period: "all",
     customStart: "",
     customEnd: "",
   },
+  isLoading: false,
 };
 
-const CACHE_KEY = "controlpanel-cache-v5";
+const CACHE_KEY = "controlpanel-cache-v6";
 const AUTH_HASH = "dcf887743f1db891e54fbf07efeda87afaa6cfe596c0e9369072ec4b0eca7c1e";
 const AUTH_SESSION_KEY = "controlpanel-auth";
 
-// SHA-256 hash function
+// ═══════════════════════════════════════════════════════════════════════════
+// AUTHENTICATION
+// ═══════════════════════════════════════════════════════════════════════════
+
 async function sha256(message) {
   const msgBuffer = new TextEncoder().encode(message);
   const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
@@ -24,12 +34,10 @@ async function sha256(message) {
   return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-// Check if user is authenticated
 function isAuthenticated() {
   return sessionStorage.getItem(AUTH_SESSION_KEY) === AUTH_HASH;
 }
 
-// Handle login
 async function handleLogin(event) {
   event.preventDefault();
   const password = document.getElementById("login-password").value;
@@ -47,7 +55,10 @@ async function handleLogin(event) {
   }
 }
 
-// Initialize app after authentication
+// ═══════════════════════════════════════════════════════════════════════════
+// INITIALIZATION & LIFECYCLE
+// ═══════════════════════════════════════════════════════════════════════════
+
 function initApp() {
   document.body.classList.add("loaded");
   bindNavigation();
@@ -62,23 +73,53 @@ function initApp() {
     indexData();
     renderCurrentView();
     updateStatus();
+  } else {
+    showLoading(true);
   }
 
   refreshData(false);
-  setInterval(() => refreshData(false), CONFIG.pollMs);
+  state.pollInterval = setInterval(() => refreshData(false), CONFIG.pollMs);
+}
+
+function cleanup() {
+  if (state.pollInterval) {
+    clearInterval(state.pollInterval);
+    state.pollInterval = null;
+  }
+  destroyAllCharts();
+}
+
+function destroyAllCharts() {
+  Object.keys(state.charts).forEach((key) => {
+    if (state.charts[key]) {
+      state.charts[key].destroy();
+      state.charts[key] = null;
+    }
+  });
+  state.charts = {};
+}
+
+function destroyChart(canvasId) {
+  if (state.charts[canvasId]) {
+    state.charts[canvasId].destroy();
+    delete state.charts[canvasId];
+  }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Setup login form handler
   document.getElementById("login-form").addEventListener("submit", handleLogin);
 
-  // Check if already authenticated
   if (isAuthenticated()) {
     document.getElementById("login-overlay").classList.add("hidden");
     initApp();
   }
 });
 
+window.addEventListener("beforeunload", cleanup);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// NAVIGATION & CONTROLS
+// ═══════════════════════════════════════════════════════════════════════════
 
 function bindNavigation() {
   window.addEventListener("hashchange", renderCurrentView);
@@ -134,8 +175,12 @@ function renderCurrentView() {
   viewSite.classList.toggle("active", !isOverview);
 
   document.querySelectorAll(".nav-link").forEach((link) => {
-    link.classList.toggle("active", link.dataset.route === route || (isOverview && link.dataset.route === "overview"));
+    const isActive = link.dataset.route === route || (isOverview && link.dataset.route === "overview");
+    link.classList.toggle("active", isActive);
+    link.setAttribute("aria-current", isActive ? "page" : "false");
   });
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
 
   if (isOverview) {
     renderOverview();
@@ -144,14 +189,27 @@ function renderCurrentView() {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// DATA FETCHING & NORMALIZATION
+// ═══════════════════════════════════════════════════════════════════════════
+
 async function refreshData(force) {
+  if (state.isLoading) return;
+
   const previousMax = getMaxTimestamp(state.data);
   const previousCount = state.data.length;
+
+  state.isLoading = true;
+  showLoading(true);
+
   const { data, status } = await fetchAllSites();
   const nextMax = getMaxTimestamp(data);
 
   state.status = status;
   state.lastFetched = new Date();
+  state.isLoading = false;
+
+  showLoading(false);
   updateStatus();
 
   if (force || !previousMax || (nextMax && nextMax > previousMax)) {
@@ -218,195 +276,139 @@ async function fetchAllSites() {
 }
 
 function normalizeSiteRows(site, rows) {
-  switch (site.kind) {
-    case "portfolio":
-      return rows.map((row) => normalizePortfolio(row)).filter(Boolean);
-    case "vbp":
-      return rows.map((row) => normalizeVbp(row)).filter(Boolean);
-    case "precos":
-      return rows.map((row) => normalizePrecos(row, site.key)).filter(Boolean);
-    case "comex":
-      return rows.map((row) => normalizeComex(row, site.key)).filter(Boolean);
-    case "emprego":
-      return rows.map((row) => normalizeEmprego(row, site.key)).filter(Boolean);
-    default:
-      return [];
+  if (!Array.isArray(rows)) return [];
+
+  const schema = FIELD_SCHEMAS[site.kind];
+  if (!schema) {
+    console.warn(`[ControlPanel] Schema nao encontrado para: ${site.kind}`);
+    return [];
   }
+
+  return rows
+    .map((row) => normalizeRow(row, site.key, site.kind, schema))
+    .filter(Boolean);
 }
 
-function normalizePortfolio(row) {
-  const ts = parseDate(getValue(row, ["Client Timestamp", "Timestamp", "client timestamp"]));
-  if (!ts) return null;
-  const url = getValue(row, ["Page URL", "URL", "page url"]);
-  const returning = getReturningValue(row);
-  const userAgent = getValue(row, ["User Agent", "user agent"]) || "";
-  const derived = userAgent ? parseUserAgent(userAgent) : {};
-  return {
-    siteKey: "portfolio",
-    ts,
-    url: url || "",
-    path: extractPath(url),
-    referrer: getValue(row, ["Referrer", "referrer"]) || "",
-    timezone: getValue(row, ["Timezone", "timezone"]) || "",
-    sessionId: getValue(row, ["Session ID", "session id"]) || "",
-    os: getValue(row, ["os", "OS", "Sistema Operacional"]) || derived.os || "",
-    browser: getValue(row, ["browser", "Browser", "Navegador"]) || derived.browser || "",
-    deviceType: normalizeDeviceType(getValue(row, ["deviceType", "Device Type", "device", "Device"]) || derived.deviceType),
-    returning,
-    userAgent: userAgent || undefined,
-    language: getValue(row, ["Language", "language"]) || "",
-    screenWidth: toNumber(getValue(row, ["Screen Width", "screenWidth", "screenResolution"])),
-    screenHeight: toNumber(getValue(row, ["Screen Height", "screenHeight"])),
-    connectionType: getValue(row, ["Connection Type", "connectionType"]) || "",
-    loadTime: toNumber(getValue(row, ["Page Load Time (ms)", "Page Load Time", "pageLoadTime", "loadTime", "LoadTime"])),
-    firstContentfulPaint: toNumber(getValue(row, ["First Contentful Paint", "firstContentfulPaint", "FirstContentfulPaint"])),
-    domInteractiveTime: toNumber(getValue(row, ["DOM Interactive Time", "domInteractiveTime", "DomInteractiveTime"])),
-    isMobile: parseBool(getValue(row, ["isMobile", "Is Mobile"])),
-    utmSource: getValue(row, ["UTM Source", "utmSource"]) || "",
-    utmMedium: getValue(row, ["UTM Medium", "utmMedium"]) || "",
-    utmCampaign: getValue(row, ["UTM Campaign", "utmCampaign"]) || "",
-  };
-}
+function normalizeRow(row, siteKey, kind, schema) {
+  if (!row || typeof row !== "object") return null;
 
-function normalizePrecos(row, siteKey) {
-  const ts = parseDate(getValue(row, ["Timestamp", "timestamp"]));
-  if (!ts) return null;
-  const url = getValue(row, ["URL", "url"]) || "";
-  const returning = getReturningValue(row);
-  const userAgent = getValue(row, ["User Agent", "user agent"]) || "";
+  const ts = parseDate(getValue(row, schema.timestamp));
+  if (!ts || isNaN(ts.getTime())) return null;
+
+  const url = getValue(row, schema.url) || "";
+  const userAgent = getValue(row, schema.userAgent) || "";
   const derived = userAgent ? parseUserAgent(userAgent) : {};
-  return {
+
+  // Common fields extraction
+  const result = {
     siteKey,
     ts,
     url,
-    path: getValue(row, ["Caminho", "caminho"]) || extractPath(url),
-    referrer: getValue(row, ["Referrer", "referrer"]) || "",
-    timezone: getValue(row, ["Timezone", "timezone"]) || "",
-    sessionId: getValue(row, ["Session ID", "session id"]) || "",
-    os: getValue(row, ["os", "OS", "Sistema Operacional", "sistema operacional"]) || derived.os || "",
-    browser: getValue(row, ["browser", "Browser", "Navegador", "navegador"]) || derived.browser || "",
-    deviceType: normalizeDeviceType(getValue(row, ["deviceType", "Device Type", "Dispositivo", "dispositivo"]) || derived.deviceType),
-    returning,
+    path: getValue(row, schema.path) || extractPath(url),
+    referrer: getValue(row, schema.referrer) || "",
+    timezone: schema.timezonePattern
+      ? getValue(row, schema.timezone) || getValueByKeyMatch(row, schema.timezonePattern) || ""
+      : getValue(row, schema.timezone) || "",
+    sessionId: getValue(row, schema.sessionId) || "",
     userAgent: userAgent || undefined,
-    language: getValue(row, ["language", "Language", "Idioma"]) || "",
-    screenWidth: toNumber(getValue(row, ["screenWidth", "Screen Width"])),
-    screenHeight: toNumber(getValue(row, ["screenHeight", "Screen Height"])),
-    connectionType: getValue(row, ["connectionType", "Connection Type"]) || "",
-    loadTime: toNumber(getValue(row, ["LoadTime", "loadTime", "Load Time"])),
-    firstContentfulPaint: toNumber(getValue(row, ["firstContentfulPaint", "FirstContentfulPaint", "First Contentful Paint"])),
-    domInteractiveTime: toNumber(getValue(row, ["domInteractiveTime", "DomInteractiveTime", "DOM Interactive Time"])),
-    isMobile: parseBool(getValue(row, ["isMobile", "Is Mobile"])),
-    utmSource: getValue(row, ["utmSource", "UTM Source"]) || "",
-    utmMedium: getValue(row, ["utmMedium", "UTM Medium"]) || "",
-    utmCampaign: getValue(row, ["utmCampaign", "UTM Campaign"]) || "",
+    language: getValue(row, schema.language) || "",
+    connectionType: getValue(row, schema.connectionType) || "",
+    utmSource: getValue(row, schema.utmSource) || "",
+    utmMedium: getValue(row, schema.utmMedium) || "",
+    utmCampaign: getValue(row, schema.utmCampaign) || "",
   };
+
+  // OS, Browser, Device - use explicit fields or derive from UA
+  if (schema.os && schema.os.length > 0) {
+    result.os = getValue(row, schema.os) || derived.os || "";
+  } else {
+    result.os = derived.os || "";
+  }
+
+  if (schema.browser && schema.browser.length > 0) {
+    result.browser = getValue(row, schema.browser) || derived.browser || "";
+  } else {
+    result.browser = derived.browser || "";
+  }
+
+  if (schema.deviceType && schema.deviceType.length > 0) {
+    result.deviceType = normalizeDeviceType(getValue(row, schema.deviceType) || derived.deviceType);
+  } else {
+    result.deviceType = normalizeDeviceType(derived.deviceType);
+  }
+
+  // Screen dimensions
+  if (schema.screenWidth && schema.screenWidth.length > 0) {
+    result.screenWidth = toNumber(getValue(row, schema.screenWidth));
+    result.screenHeight = toNumber(getValue(row, schema.screenHeight));
+  } else {
+    result.screenWidth = null;
+    result.screenHeight = null;
+  }
+
+  // Performance metrics
+  result.loadTime = toNumber(getValue(row, schema.loadTime));
+
+  if (schema.firstContentfulPaint && schema.firstContentfulPaint.length > 0) {
+    result.firstContentfulPaint = toNumber(getValue(row, schema.firstContentfulPaint));
+    result.domInteractiveTime = toNumber(getValue(row, schema.domInteractiveTime));
+  } else {
+    result.firstContentfulPaint = null;
+    result.domInteractiveTime = null;
+  }
+
+  // Mobile flag
+  if (schema.isMobile && schema.isMobile.length > 0) {
+    result.isMobile = parseBool(getValue(row, schema.isMobile));
+  } else {
+    result.isMobile = result.deviceType === "Mobile";
+  }
+
+  // Returning visitor (use global RETURNING_FIELDS)
+  if (kind !== "emprego") {
+    const returningValue = getValue(row, RETURNING_FIELDS) || getValueByKeyMatch(row, RETURNING_PATTERN);
+    result.returning = parseBool(returningValue);
+  } else {
+    result.returning = undefined;
+  }
+
+  // Emprego-specific fields
+  if (kind === "emprego") {
+    result.screenOrientation = getValue(row, schema.screenOrientation) || "";
+    result.prefersColorScheme = getValue(row, schema.prefersColorScheme) || "";
+  }
+
+  return result;
 }
 
-function normalizeComex(row, siteKey) {
-  const ts = parseDate(getValue(row, ["timestamp", "Timestamp"]));
-  if (!ts) return null;
-  const url = getValue(row, ["page", "URL", "url"]) || "";
-  const returning = getReturningValue(row);
-  const userAgent = getValue(row, ["userAgent", "User Agent", "user agent"]) || "";
-  const derived = userAgent ? parseUserAgent(userAgent) : {};
-  return {
-    siteKey,
-    ts,
-    url,
-    path: getValue(row, ["pathname", "Pathname"]) || extractPath(url),
-    referrer: getValue(row, ["referrer", "Referrer"]) || "",
-    timezone: getValue(row, ["timezone", "Timezone"]) || "",
-    sessionId: getValue(row, ["sessionId", "Session ID", "session id"]) || "",
-    os: derived.os || "",
-    browser: derived.browser || "",
-    deviceType: normalizeDeviceType(derived.deviceType),
-    returning,
-    userAgent: userAgent || undefined,
-    language: getValue(row, ["language", "Language"]) || "",
-    screenWidth: toNumber(getValue(row, ["screenWidth", "Screen Width"])),
-    screenHeight: toNumber(getValue(row, ["screenHeight", "Screen Height"])),
-    connectionType: getValue(row, ["connectionType", "Connection Type"]) || "",
-    loadTime: toNumber(getValue(row, ["loadTime", "LoadTime", "Load Time"])),
-    firstContentfulPaint: toNumber(getValue(row, ["firstContentfulPaint", "FirstContentfulPaint"])),
-    domInteractiveTime: toNumber(getValue(row, ["domInteractiveTime", "DomInteractiveTime"])),
-    isMobile: parseBool(getValue(row, ["isMobile", "Is Mobile"])),
-    utmSource: getValue(row, ["utmSource", "UTM Source"]) || "",
-    utmMedium: getValue(row, ["utmMedium", "UTM Medium"]) || "",
-    utmCampaign: getValue(row, ["utmCampaign", "UTM Campaign"]) || "",
-  };
+// ═══════════════════════════════════════════════════════════════════════════
+// FIELD EXTRACTION HELPERS
+// ═══════════════════════════════════════════════════════════════════════════
+
+function getValue(row, names) {
+  if (!names || !Array.isArray(names) || names.length === 0) return null;
+
+  const lookup = Object.keys(row).reduce((acc, key) => {
+    acc[key.toLowerCase()] = row[key];
+    return acc;
+  }, {});
+
+  for (const name of names) {
+    const value = lookup[name.toLowerCase()];
+    if (value !== undefined && value !== null && value !== "") return value;
+  }
+  return null;
 }
 
-function normalizeEmprego(row, siteKey) {
-  const ts = parseDate(getValue(row, ["timestamp", "Timestamp"]));
-  if (!ts) return null;
-  const url = getValue(row, ["page", "URL", "url"]) || "";
-  const deviceTypeRaw = getValue(row, ["deviceType", "Device Type", "Dispositivo"]) || "";
-  return {
-    siteKey,
-    ts,
-    url,
-    path: getValue(row, ["pathname", "Pathname"]) || extractPath(url),
-    referrer: getValue(row, ["referrer", "Referrer"]) || "",
-    timezone: getValue(row, ["timezone", "Timezone"]) || "",
-    sessionId: getValue(row, ["sessionId", "Session ID", "session id"]) || "",
-    os: "",
-    browser: "",
-    deviceType: normalizeDeviceType(deviceTypeRaw),
-    returning: undefined,
-    language: getValue(row, ["language", "Language"]) || "",
-    screenWidth: null,
-    screenHeight: null,
-    connectionType: getValue(row, ["connectionType", "Connection Type"]) || "",
-    loadTime: toNumber(getValue(row, ["loadTime", "LoadTime", "Load Time"])),
-    firstContentfulPaint: null,
-    domInteractiveTime: null,
-    isMobile: deviceTypeRaw.toLowerCase() === "mobile",
-    utmSource: getValue(row, ["utmSource", "UTM Source"]) || "",
-    utmMedium: getValue(row, ["utmMedium", "UTM Medium"]) || "",
-    utmCampaign: getValue(row, ["utmCampaign", "UTM Campaign"]) || "",
-    screenOrientation: getValue(row, ["screenOrientation", "Screen Orientation"]) || "",
-    prefersColorScheme: getValue(row, ["prefersColorScheme", "Prefers Color Scheme"]) || "",
-  };
-}
-
-function normalizeVbp(row) {
-  const ts = parseDate(getValue(row, ["timestamp", "Timestamp", "Date", "date"]));
-  if (!ts) return null;
-  const path = getValue(row, ["page", "pathname", "path"]) || "";
-  const userAgent = getValue(row, ["userAgent", "User Agent", "user agent"]) || "";
-  const derived = userAgent ? parseUserAgent(userAgent) : {};
-  const returning = getReturningValue(row);
-
-  const timezone =
-    getValue(row, ["timezone", "Timezone", "Fuso Horario", "Fuso horário", "Fuso", "Time Zone", "time zone", "tz", "K", "k"]) ||
-    getValueByKeyMatch(row, /(fuso|time\s*zone|timezone|tz)/i) ||
-    "";
-
-  return {
-    siteKey: "vbp-parana",
-    ts,
-    url: getValue(row, ["url", "URL", "Page URL"]) || "",
-    path,
-    referrer: getValue(row, ["referrer", "Referrer"]) || "",
-    timezone,
-    sessionId: getValue(row, ["sessionId", "Session ID", "session id"]) || "",
-    os: getValue(row, ["os", "OS", "Sistema Operacional"]) || derived.os || "",
-    browser: getValue(row, ["browser", "Browser", "Navegador"]) || derived.browser || "",
-    deviceType: normalizeDeviceType(getValue(row, ["deviceType", "Device Type", "device", "Device", "Dispositivo"]) || derived.deviceType),
-    returning,
-    userAgent: userAgent || undefined,
-    language: getValue(row, ["language", "Language"]) || "",
-    screenWidth: toNumber(getValue(row, ["screenWidth", "Screen Width"])),
-    screenHeight: toNumber(getValue(row, ["screenHeight", "Screen Height"])),
-    connectionType: getValue(row, ["connectionType", "Connection Type"]) || "",
-    loadTime: toNumber(getValue(row, ["LoadTime", "loadTime", "Load Time"])),
-    firstContentfulPaint: toNumber(getValue(row, ["firstContentfulPaint", "FirstContentfulPaint", "First Contentful Paint"])),
-    domInteractiveTime: toNumber(getValue(row, ["domInteractiveTime", "DomInteractiveTime", "DOM Interactive Time"])),
-    isMobile: parseBool(getValue(row, ["isMobile", "Is Mobile"])),
-    utmSource: getValue(row, ["utmSource", "UTM Source"]) || "",
-    utmMedium: getValue(row, ["utmMedium", "UTM Medium"]) || "",
-    utmCampaign: getValue(row, ["utmCampaign", "UTM Campaign"]) || "",
-  };
+function getValueByKeyMatch(row, pattern) {
+  const keys = Object.keys(row);
+  for (const key of keys) {
+    if (pattern.test(key)) {
+      const value = row[key];
+      if (value !== undefined && value !== null && value !== "") return value;
+    }
+  }
+  return null;
 }
 
 function parseUserAgent(ua) {
@@ -432,60 +434,17 @@ function parseUserAgent(ua) {
   return { os, browser, deviceType };
 }
 
-function getValue(row, names) {
-  const lookup = Object.keys(row).reduce((acc, key) => {
-    acc[key.toLowerCase()] = row[key];
-    return acc;
-  }, {});
-
-  for (const name of names) {
-    const value = lookup[name.toLowerCase()];
-    if (value !== undefined && value !== null && value !== "") return value;
-  }
-  return null;
-}
-
-function getValueByKeyMatch(row, pattern) {
-  const keys = Object.keys(row);
-  for (const key of keys) {
-    if (pattern.test(key)) {
-      const value = row[key];
-      if (value !== undefined && value !== null && value !== "") return value;
-    }
-  }
-  return null;
-}
-
-function getReturningValue(row) {
-  const value =
-    getValue(row, [
-      "Returning Visitor",
-      "returning visitor",
-      "Returning",
-      "returning",
-      "ReturningVisitor",
-      "returningVisitor",
-      "Returning_Visitor",
-      "returning_visitor",
-      "Is Returning",
-      "isReturning",
-      "is_returning",
-      "Visitante Recorrente",
-      "visitante recorrente",
-      "Retornando",
-      "retornando",
-      "Retorno",
-      "retorno",
-    ]) || getValueByKeyMatch(row, /(return|retorn)/i);
-
-  return parseBool(value);
-}
-
 function parseDate(value) {
   if (!value) return null;
-  if (value instanceof Date) return value;
-  if (typeof value === "number") return new Date(value);
-  if (typeof value === "string") return new Date(value);
+  if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
+  if (typeof value === "number") {
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  if (typeof value === "string") {
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? null : d;
+  }
   return null;
 }
 
@@ -499,7 +458,7 @@ function parseBool(value) {
 function toNumber(value) {
   if (value === null || value === undefined || value === "") return null;
   const num = Number(value);
-  return isNaN(num) ? null : num;
+  return isNaN(num) || num < 0 ? null : num;
 }
 
 function normalizeDeviceType(value) {
@@ -523,7 +482,7 @@ function extractPath(url) {
 function dedupeRows(rows) {
   const map = new Map();
   rows.forEach((row) => {
-    if (!row.ts) return;
+    if (!row || !row.ts) return;
     const key = `${row.siteKey}|${row.ts.toISOString()}|${row.sessionId || ""}|${row.path || row.url || ""}`;
     if (!map.has(key)) map.set(key, row);
   });
@@ -541,9 +500,36 @@ function indexData() {
   });
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// LOADING & EMPTY STATES
+// ═══════════════════════════════════════════════════════════════════════════
+
+function showLoading(isLoading) {
+  state.isLoading = isLoading;
+  document.body.classList.toggle("is-loading", isLoading);
+}
+
+function renderEmptyState(container, message = "Nenhum dado disponivel para o periodo selecionado.") {
+  container.innerHTML = `
+    <div class="empty-state">
+      <div class="empty-icon">📊</div>
+      <p>${message}</p>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// OVERVIEW RENDERING
+// ═══════════════════════════════════════════════════════════════════════════
+
 function renderOverview() {
   const cards = document.getElementById("overview-cards");
   cards.innerHTML = "";
+
+  if (state.data.length === 0 && !state.isLoading) {
+    renderEmptyState(cards, "Carregando dados...");
+    return;
+  }
 
   const totalVisits = state.data.length;
   const uniqueSessions = new Set(state.data.map((row) => row.sessionId).filter(Boolean)).size;
@@ -553,7 +539,8 @@ function renderOverview() {
     return {
       key: site.key,
       last: lastRow ? lastRow.ts : null,
-      timezone: lastRow ? lastRow.timezone : null
+      timezone: lastRow ? lastRow.timezone : null,
+      count: rows.length,
     };
   });
 
@@ -572,25 +559,30 @@ function renderOverview() {
   // Returning rate
   const returningRate = computeReturningRate(state.data);
 
-  cards.appendChild(makeCard("Total de acessos", formatNumber(totalVisits)));
-  cards.appendChild(makeCard("Sessoes unicas", formatNumber(uniqueSessions)));
-  cards.appendChild(makeCard("Mobile %", mobilePct));
-  cards.appendChild(makeCard("Tempo medio de carga", avgLoad));
-  cards.appendChild(makeCard("Top Browser", topBrowser));
-  cards.appendChild(makeCard("Returning rate", returningRate));
+  cards.appendChild(makeCard("Total de acessos", formatNumber(totalVisits), "total"));
+  cards.appendChild(makeCard("Sessoes unicas", formatNumber(uniqueSessions), "sessions"));
+  cards.appendChild(makeCard("Mobile %", mobilePct, "mobile"));
+  cards.appendChild(makeCard("Tempo medio de carga", avgLoad, "load"));
+  cards.appendChild(makeCard("Top Browser", topBrowser, "browser"));
+  cards.appendChild(makeCard("Returning rate", returningRate, "returning"));
 
-  lastBySite.forEach((entry) => {
+  lastBySite.forEach((entry, index) => {
     const site = CONFIG.sites.find((item) => item.key === entry.key);
     const value = entry.last
-      ? `${formatDateTime(entry.last)}${entry.timezone ? ` (${entry.timezone})` : ''}`
+      ? `${formatDateTime(entry.last)}${entry.timezone ? ` (${entry.timezone})` : ""}`
       : "--";
-    cards.appendChild(makeCard(`Ultimo acesso - ${site.name}`, value));
+    const card = makeCard(`${site.name}`, value, "site");
+    card.style.borderLeftColor = CHART_COLORS.sites[index];
+    card.dataset.count = entry.count;
+    cards.appendChild(card);
   });
 
   renderOverviewChart();
   renderOverviewDevices();
   renderOverviewBrowsers();
   renderOverviewReturning();
+  renderHeatmap();
+  renderComparison();
   renderTopPeriods();
 }
 
@@ -604,27 +596,42 @@ function renderSite(siteKey) {
   const rows = state.bySite[siteKey] || [];
   const filtered = applyFilters(rows, state.filters);
 
+  if (rows.length === 0) {
+    renderEmptyState(document.getElementById("site-kpis"), "Nenhum dado disponivel para este site.");
+    return;
+  }
+
   renderSiteKpis(rows, filtered);
   renderSiteChart(siteKey, filtered);
   renderDistributions(rows);
+  renderTimezoneMap(rows);
   renderPerformanceKpis(rows);
   renderLatest(rows);
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// CHART RENDERING
+// ═══════════════════════════════════════════════════════════════════════════
+
 function renderOverviewChart() {
   const filtered = applyFilters(state.data, state.filters);
+
+  if (filtered.length === 0) {
+    const ctx = document.getElementById("overview-chart");
+    if (ctx) ctx.parentElement.innerHTML = '<div class="empty-state"><p>Nenhum dado no periodo</p></div>';
+    return;
+  }
+
   const { labels, series, totals } = buildSeries(filtered, state.filters.granularity, true);
 
-  const datasets = CONFIG.sites.map((site, index) => {
-    return {
-      label: site.name,
-      data: series[site.key] || labels.map(() => 0),
-      borderColor: pickColor(index),
-      backgroundColor: pickColor(index),
-      tension: 0.2,
-      pointRadius: 2,
-    };
-  });
+  const datasets = CONFIG.sites.map((site, index) => ({
+    label: site.name,
+    data: series[site.key] || labels.map(() => 0),
+    borderColor: CHART_COLORS.sites[index],
+    backgroundColor: CHART_COLORS.sites[index],
+    tension: 0.2,
+    pointRadius: 2,
+  }));
 
   datasets.push({
     label: "Total",
@@ -659,10 +666,23 @@ function renderOverviewReturning() {
   const known = state.data.filter((r) => r.returning !== undefined);
   const returning = known.filter((r) => r.returning).length;
   const newVisitors = known.length - returning;
+
+  if (known.length === 0) {
+    const ctx = document.getElementById("overview-returning-chart");
+    if (ctx) ctx.parentElement.innerHTML = '<div class="empty-state small"><p>Sem dados</p></div>';
+    return;
+  }
+
   renderDoughnutChart("overview-returning-chart", [["Novos", newVisitors], ["Retornantes", returning]], "Visitantes");
 }
 
 function renderSiteChart(siteKey, records) {
+  if (records.length === 0) {
+    const ctx = document.getElementById("site-chart");
+    if (ctx) ctx.parentElement.innerHTML = '<div class="empty-state"><p>Nenhum dado no periodo</p></div>';
+    return;
+  }
+
   const { labels, series } = buildSeries(records, state.filters.granularity, false);
   const site = CONFIG.sites.find((item) => item.key === siteKey);
 
@@ -670,8 +690,8 @@ function renderSiteChart(siteKey, records) {
     {
       label: site.name,
       data: series[siteKey] || labels.map(() => 0),
-      borderColor: pickColor(0),
-      backgroundColor: pickColor(0),
+      borderColor: CHART_COLORS.sites[0],
+      backgroundColor: CHART_COLORS.sites[0],
       tension: 0.2,
       pointRadius: 2,
     },
@@ -696,6 +716,220 @@ function renderDistributions(records) {
   renderBarChart("lang-chart", langCounts, "Idioma");
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// HEATMAP - Hour x Day of Week
+// ═══════════════════════════════════════════════════════════════════════════
+
+function renderHeatmap() {
+  const container = document.getElementById("heatmap-container");
+  if (!container) return;
+
+  const filtered = applyFilters(state.data, state.filters);
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="empty-state small"><p>Sem dados</p></div>';
+    return;
+  }
+
+  // Build 7x24 matrix (days x hours)
+  const matrix = Array(7).fill(null).map(() => Array(24).fill(0));
+  let maxCount = 0;
+
+  filtered.forEach((row) => {
+    const day = row.ts.getDay();
+    const hour = row.ts.getHours();
+    matrix[day][hour]++;
+    if (matrix[day][hour] > maxCount) maxCount = matrix[day][hour];
+  });
+
+  // Generate HTML grid
+  let html = '<div class="heatmap-grid">';
+  html += '<div class="heatmap-corner"></div>';
+
+  // Hour headers
+  for (let h = 0; h < 24; h++) {
+    html += `<div class="heatmap-header">${String(h).padStart(2, "0")}</div>`;
+  }
+
+  // Rows
+  for (let d = 0; d < 7; d++) {
+    html += `<div class="heatmap-day">${DAYS_PT[d]}</div>`;
+    for (let h = 0; h < 24; h++) {
+      const count = matrix[d][h];
+      const intensity = maxCount > 0 ? count / maxCount : 0;
+      const bg = getHeatmapColor(intensity);
+      html += `<div class="heatmap-cell" style="background:${bg}" title="${DAYS_PT[d]} ${h}h: ${count} visitas"></div>`;
+    }
+  }
+
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function getHeatmapColor(intensity) {
+  if (intensity === 0) return "rgba(255, 255, 255, 0.05)";
+  const r = Math.round(45 + (255 - 45) * intensity);
+  const g = Math.round(212 + (122 - 212) * intensity);
+  const b = Math.round(191 + (24 - 191) * intensity);
+  const a = 0.2 + 0.7 * intensity;
+  return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TIMEZONE MAP
+// ═══════════════════════════════════════════════════════════════════════════
+
+function renderTimezoneMap(records) {
+  const container = document.getElementById("timezone-map");
+  if (!container) return;
+
+  if (records.length === 0) {
+    container.innerHTML = '<div class="empty-state small"><p>Sem dados</p></div>';
+    return;
+  }
+
+  // Group by region
+  const regionCounts = new Map();
+  records.forEach((row) => {
+    const tz = row.timezone || "";
+    const regionInfo = TIMEZONE_REGIONS[tz] || { region: "Outros", flag: "🌍" };
+    const key = regionInfo.region;
+    const current = regionCounts.get(key) || { count: 0, flag: regionInfo.flag };
+    current.count++;
+    regionCounts.set(key, current);
+  });
+
+  // Sort by count
+  const sorted = Array.from(regionCounts.entries()).sort((a, b) => b[1].count - a[1].count);
+  const total = records.length;
+
+  let html = '<div class="timezone-list">';
+  sorted.forEach(([region, data]) => {
+    const pct = ((data.count / total) * 100).toFixed(1);
+    html += `
+      <div class="timezone-item">
+        <span class="tz-flag">${data.flag}</span>
+        <span class="tz-region">${region}</span>
+        <span class="tz-count">${formatNumber(data.count)}</span>
+        <span class="tz-pct">${pct}%</span>
+      </div>
+    `;
+  });
+  html += '</div>';
+
+  container.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EXPORT DATA
+// ═══════════════════════════════════════════════════════════════════════════
+
+function exportData(format = "csv") {
+  const route = (location.hash || "#/overview").replace("#/", "");
+  const isOverview = route === "overview" || route === "";
+
+  let records = isOverview ? state.data : (state.bySite[route] || []);
+  records = applyFilters(records, state.filters);
+
+  if (records.length === 0) {
+    showToast("Nenhum dado para exportar");
+    return;
+  }
+
+  if (format === "csv") {
+    exportCSV(records, route);
+  } else if (format === "json") {
+    exportJSON(records, route);
+  }
+}
+
+function exportCSV(records, filename) {
+  const headers = ["Data", "Site", "URL", "Path", "Referrer", "Timezone", "OS", "Browser", "Dispositivo", "Idioma", "LoadTime(ms)"];
+  const rows = records.map((r) => [
+    r.ts ? r.ts.toISOString() : "",
+    r.siteKey || "",
+    r.url || "",
+    r.path || "",
+    r.referrer || "",
+    r.timezone || "",
+    r.os || "",
+    r.browser || "",
+    r.deviceType || "",
+    r.language || "",
+    r.loadTime || "",
+  ]);
+
+  const csvContent = [headers, ...rows]
+    .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+    .join("\n");
+
+  downloadFile(csvContent, `controlpanel-${filename}-${formatDateForFilename(new Date())}.csv`, "text/csv");
+}
+
+function exportJSON(records, filename) {
+  const jsonContent = JSON.stringify(records, null, 2);
+  downloadFile(jsonContent, `controlpanel-${filename}-${formatDateForFilename(new Date())}.json`, "application/json");
+}
+
+function downloadFile(content, filename, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast(`Exportado: ${filename}`);
+}
+
+function formatDateForFilename(date) {
+  return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SITE COMPARISON TABLE
+// ═══════════════════════════════════════════════════════════════════════════
+
+function renderComparison() {
+  const container = document.getElementById("comparison-table");
+  if (!container) return;
+
+  const tbody = container.querySelector("tbody");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  CONFIG.sites.forEach((site, index) => {
+    const rows = state.bySite[site.key] || [];
+    const filtered = applyFilters(rows, state.filters);
+
+    const total = rows.length;
+    const periodCount = filtered.length;
+    const uniqueSessions = new Set(rows.map((r) => r.sessionId).filter(Boolean)).size;
+    const mobileCount = rows.filter((r) => r.deviceType === "Mobile").length;
+    const mobilePct = total > 0 ? ((mobileCount / total) * 100).toFixed(1) : "0";
+    const loadTimes = rows.map((r) => r.loadTime).filter((v) => v && v > 0);
+    const avgLoad = loadTimes.length ? (loadTimes.reduce((a, b) => a + b, 0) / loadTimes.length / 1000).toFixed(2) : "--";
+    const lastAccess = rows.length ? formatDateTime(rows[rows.length - 1].ts) : "--";
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td style="border-left: 3px solid ${CHART_COLORS.sites[index]}">${site.name}</td>
+      <td>${formatNumber(total)}</td>
+      <td>${formatNumber(periodCount)}</td>
+      <td>${formatNumber(uniqueSessions)}</td>
+      <td>${mobilePct}%</td>
+      <td>${avgLoad}s</td>
+      <td>${lastAccess}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PERFORMANCE & LATEST
+// ═══════════════════════════════════════════════════════════════════════════
+
 function renderPerformanceKpis(records) {
   const target = document.getElementById("site-performance");
   if (!target) return;
@@ -712,7 +946,7 @@ function renderPerformanceKpis(records) {
     const values = records.map((r) => r[m.key]).filter((v) => v && v > 0);
     if (values.length) hasAny = true;
     const avg = values.length ? (values.reduce((a, b) => a + b, 0) / values.length / m.divisor).toFixed(2) + m.unit : "N/D";
-    target.appendChild(makeCard(m.label, avg));
+    target.appendChild(makeCard(m.label, avg, "perf"));
   });
 
   if (!hasAny) {
@@ -725,7 +959,13 @@ function renderPerformanceKpis(records) {
 
 function renderLatest(records) {
   const table = document.querySelector("#latest-table tbody");
+  if (!table) return;
   table.innerHTML = "";
+
+  if (records.length === 0) {
+    table.innerHTML = '<tr><td colspan="7" class="empty-cell">Nenhum registro</td></tr>';
+    return;
+  }
 
   const sorted = [...records].sort((a, b) => b.ts - a.ts).slice(0, CONFIG.maxLatest);
   sorted.forEach((row) => {
@@ -750,6 +990,7 @@ function renderLatest(records) {
 
 function renderSiteKpis(allRows, filteredRows) {
   const target = document.getElementById("site-kpis");
+  if (!target) return;
   target.innerHTML = "";
 
   const total = allRows.length;
@@ -757,18 +998,25 @@ function renderSiteKpis(allRows, filteredRows) {
   const singleVisitSessions = countSingleVisitSessions(allRows);
   const returningRate = computeReturningRate(allRows);
 
-  target.appendChild(makeCard("Total de acessos", formatNumber(total)));
-  target.appendChild(makeCard("Sessoes unicas", formatNumber(uniqueSessions)));
-  target.appendChild(makeCard("Acessos sem repeticao", formatNumber(singleVisitSessions)));
-  target.appendChild(makeCard("Returning rate", returningRate));
-  target.appendChild(makeCard("Acessos no periodo", formatNumber(filteredRows.length)));
+  target.appendChild(makeCard("Total de acessos", formatNumber(total), "total"));
+  target.appendChild(makeCard("Sessoes unicas", formatNumber(uniqueSessions), "sessions"));
+  target.appendChild(makeCard("Acessos sem repeticao", formatNumber(singleVisitSessions), "single"));
+  target.appendChild(makeCard("Returning rate", returningRate, "returning"));
+  target.appendChild(makeCard("Acessos no periodo", formatNumber(filteredRows.length), "period"));
 }
 
 function renderTopPeriods() {
   const table = document.querySelector("#top-periods tbody");
+  if (!table) return;
   table.innerHTML = "";
 
-  const { labels, totals } = buildSeries(applyFilters(state.data, state.filters), state.filters.granularity, true);
+  const filtered = applyFilters(state.data, state.filters);
+  if (filtered.length === 0) {
+    table.innerHTML = '<tr><td colspan="2" class="empty-cell">Nenhum dado</td></tr>';
+    return;
+  }
+
+  const { labels, totals } = buildSeries(filtered, state.filters.granularity, true);
   const pairs = labels.map((label, index) => ({ label, total: totals[index] }));
   pairs.sort((a, b) => b.total - a.total);
 
@@ -783,6 +1031,137 @@ function renderTopPeriods() {
     table.appendChild(tr);
   });
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CHART HELPERS
+// ═══════════════════════════════════════════════════════════════════════════
+
+function renderLineChart(canvasId, labels, datasets, yLabel) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+
+  destroyChart(canvasId);
+
+  state.charts[canvasId] = new Chart(ctx, {
+    type: "line",
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { position: "bottom", labels: { color: getComputedStyle(document.body).color } },
+      },
+      scales: {
+        x: { ticks: { color: getComputedStyle(document.body).color } },
+        y: { ticks: { color: getComputedStyle(document.body).color }, title: { display: true, text: yLabel, color: getComputedStyle(document.body).color } },
+      },
+    },
+  });
+}
+
+function renderBarChart(canvasId, entries, label) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+
+  destroyChart(canvasId);
+
+  if (entries.length === 0) {
+    ctx.parentElement.innerHTML = '<div class="empty-state small"><p>Sem dados</p></div>';
+    return;
+  }
+
+  const labels = entries.map((entry) => entry[0]);
+  const values = entries.map((entry) => entry[1]);
+
+  const barTopLabels = {
+    id: "barTopLabels",
+    afterDatasetsDraw(chart) {
+      if (chart.config.type !== "bar") return;
+      const { ctx: chartCtx } = chart;
+      const dataset = chart.data.datasets[0];
+      const meta = chart.getDatasetMeta(0);
+      if (!dataset || !meta?.data?.length) return;
+
+      chartCtx.save();
+      chartCtx.font = "600 12px 'Space Grotesk', sans-serif";
+      chartCtx.fillStyle = getComputedStyle(document.body).color;
+      chartCtx.textAlign = "center";
+      chartCtx.textBaseline = "bottom";
+
+      meta.data.forEach((element, index) => {
+        const value = dataset.data[index];
+        if (value === null || value === undefined) return;
+        const { x, y } = element.tooltipPosition();
+        chartCtx.fillText(formatNumber(value), x, y - 4);
+      });
+      chartCtx.restore();
+    },
+  };
+
+  state.charts[canvasId] = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        {
+          label,
+          data: values,
+          backgroundColor: "rgba(255, 122, 24, 0.6)",
+          borderColor: "rgba(255, 122, 24, 0.8)",
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+      },
+      scales: {
+        x: { ticks: { color: getComputedStyle(document.body).color } },
+        y: { ticks: { color: getComputedStyle(document.body).color } },
+      },
+    },
+    plugins: [barTopLabels],
+  });
+}
+
+function renderDoughnutChart(canvasId, entries, label) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+
+  destroyChart(canvasId);
+
+  const labels = entries.map((e) => e[0]);
+  const values = entries.map((e) => e[1]);
+
+  state.charts[canvasId] = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels,
+      datasets: [
+        {
+          label,
+          data: values,
+          backgroundColor: CHART_COLORS.doughnut.slice(0, labels.length),
+          borderWidth: 0,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "bottom", labels: { color: getComputedStyle(document.body).color, padding: 12 } },
+      },
+    },
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SERIES & AGGREGATION
+// ═══════════════════════════════════════════════════════════════════════════
 
 function buildSeries(records, granularity, includeTotals) {
   const bucketMap = new Map();
@@ -875,134 +1254,14 @@ function normalizeReferrer(value) {
   }
 }
 
-function renderLineChart(canvasId, labels, datasets, yLabel) {
-  const ctx = document.getElementById(canvasId);
-  if (!ctx) return;
+// ═══════════════════════════════════════════════════════════════════════════
+// UI HELPERS
+// ═══════════════════════════════════════════════════════════════════════════
 
-  if (state.charts[canvasId]) {
-    state.charts[canvasId].destroy();
-  }
-
-  state.charts[canvasId] = new Chart(ctx, {
-    type: "line",
-    data: { labels, datasets },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode: "index", intersect: false },
-      plugins: {
-        legend: { position: "bottom", labels: { color: getComputedStyle(document.body).color } },
-      },
-      scales: {
-        x: { ticks: { color: getComputedStyle(document.body).color } },
-        y: { ticks: { color: getComputedStyle(document.body).color }, title: { display: true, text: yLabel, color: getComputedStyle(document.body).color } },
-      },
-    },
-  });
-}
-
-function renderBarChart(canvasId, entries, label) {
-  const ctx = document.getElementById(canvasId);
-  if (!ctx) return;
-
-  if (state.charts[canvasId]) {
-    state.charts[canvasId].destroy();
-  }
-
-  const labels = entries.map((entry) => entry[0]);
-  const values = entries.map((entry) => entry[1]);
-
-  const barTopLabels = {
-    id: "barTopLabels",
-    afterDatasetsDraw(chart) {
-      if (chart.config.type !== "bar") return;
-      const { ctx: chartCtx } = chart;
-      const dataset = chart.data.datasets[0];
-      const meta = chart.getDatasetMeta(0);
-      if (!dataset || !meta?.data?.length) return;
-
-      chartCtx.save();
-      chartCtx.font = "600 12px 'Space Grotesk', sans-serif";
-      chartCtx.fillStyle = getComputedStyle(document.body).color;
-      chartCtx.textAlign = "center";
-      chartCtx.textBaseline = "bottom";
-
-      meta.data.forEach((element, index) => {
-        const value = dataset.data[index];
-        if (value === null || value === undefined) return;
-        const { x, y } = element.tooltipPosition();
-        chartCtx.fillText(formatNumber(value), x, y - 4);
-      });
-      chartCtx.restore();
-    },
-  };
-
-  state.charts[canvasId] = new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels,
-      datasets: [
-        {
-          label,
-          data: values,
-          backgroundColor: "rgba(255, 122, 24, 0.6)",
-          borderColor: "rgba(255, 122, 24, 0.8)",
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-      },
-      scales: {
-        x: { ticks: { color: getComputedStyle(document.body).color } },
-        y: { ticks: { color: getComputedStyle(document.body).color } },
-      },
-    },
-    plugins: [barTopLabels],
-  });
-}
-
-function renderDoughnutChart(canvasId, entries, label) {
-  const ctx = document.getElementById(canvasId);
-  if (!ctx) return;
-
-  if (state.charts[canvasId]) {
-    state.charts[canvasId].destroy();
-  }
-
-  const labels = entries.map((e) => e[0]);
-  const values = entries.map((e) => e[1]);
-  const doughnutColors = ["#38bdf8", "#22c55e", "#a855f7", "#f59e0b", "#ef4444", "#14b8a6", "#ec4899", "#6366f1"];
-
-  state.charts[canvasId] = new Chart(ctx, {
-    type: "doughnut",
-    data: {
-      labels,
-      datasets: [
-        {
-          label,
-          data: values,
-          backgroundColor: doughnutColors.slice(0, labels.length),
-          borderWidth: 0,
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { position: "bottom", labels: { color: getComputedStyle(document.body).color, padding: 12 } },
-      },
-    },
-  });
-}
-
-function makeCard(title, value) {
+function makeCard(title, value, type = "") {
   const card = document.createElement("div");
   card.className = "card";
+  if (type) card.dataset.cardType = type;
   const h3 = document.createElement("h3");
   h3.textContent = title;
   const div = document.createElement("div");
@@ -1030,17 +1289,7 @@ function pad(value) {
 }
 
 function pickColor(index) {
-  const palette = [
-    "#38bdf8", // Datageo Parana
-    "#22c55e", // Portfolio
-    "#a855f7", // VBP Parana
-    "#f59e0b", // Precos Florestais
-    "#ef4444", // Precos de Terras
-    "#14b8a6", // Precos Diarios
-    "#3b82f6", // ComexStat Parana
-    "#6366f1", // Emprego Agro Parana (indigo)
-  ];
-  return palette[index % palette.length];
+  return CHART_COLORS.sites[index % CHART_COLORS.sites.length];
 }
 
 function getMaxTimestamp(records) {
@@ -1080,12 +1329,23 @@ function showToast(message) {
   setTimeout(() => toast.classList.remove("show"), 4000);
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// CACHE
+// ═══════════════════════════════════════════════════════════════════════════
+
 function saveCache() {
-  const payload = {
-    fetchedAt: state.lastFetched?.toISOString(),
-    data: state.data.map((row) => ({ ...row, ts: row.ts.toISOString() })),
-  };
-  localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
+  try {
+    const payload = {
+      fetchedAt: state.lastFetched?.toISOString(),
+      data: state.data.map((row) => ({ ...row, ts: row.ts.toISOString() })),
+    };
+    const json = JSON.stringify(payload);
+    if (json.length < 5000000) { // 5MB limit
+      localStorage.setItem(CACHE_KEY, json);
+    }
+  } catch (e) {
+    console.warn("[ControlPanel] Cache save failed:", e);
+  }
 }
 
 function loadCache() {
@@ -1102,6 +1362,10 @@ function loadCache() {
     return null;
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// NOTIFICATIONS
+// ═══════════════════════════════════════════════════════════════════════════
 
 function requestNotificationPermission() {
   if ("Notification" in window && Notification.permission === "default") {
@@ -1123,3 +1387,6 @@ function notifyNewVisit(row) {
     tag: `visit-${row.siteKey}-${row.ts?.getTime() || Date.now()}`,
   });
 }
+
+// Expose export function globally
+window.exportData = exportData;

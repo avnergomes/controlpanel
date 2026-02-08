@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="pt-br">
 <head>
   <meta charset="utf-8">
@@ -45,12 +45,16 @@
     <div class="status-card">
       <div class="status-line">Atualizado em: <span id="updated-at">--</span></div>
       <div class="status-line">Status: <span id="status-text" class="status-ok">ok</span></div>
-      <button id="refresh-btn" class="btn">Atualizar agora</button>
+      <div class="status-actions">
+        <button id="refresh-btn" class="btn">Atualizar</button>
+        <button class="btn btn-secondary" onclick="exportData('csv')" title="Exportar CSV">CSV</button>
+        <button class="btn btn-secondary" onclick="exportData('json')" title="Exportar JSON">JSON</button>
+      </div>
     </div>
   </header>
 
-  <nav class="site-nav">
-    <a href="#/overview" data-route="overview" class="nav-link">Visao geral</a>
+  <nav class="site-nav" role="navigation" aria-label="Navegacao principal">
+    <a href="#/overview" data-route="overview" class="nav-link" aria-current="page">Visao geral</a>
     <a href="#/datageoparana" data-route="datageoparana" class="nav-link">Datageo Parana</a>
     <a href="#/portfolio" data-route="portfolio" class="nav-link">Portfolio</a>
     <a href="#/vbp-parana" data-route="vbp-parana" class="nav-link">VBP Parana</a>
@@ -105,6 +109,34 @@
         </div>
         <div class="chart-wrap">
           <canvas id="overview-chart"></canvas>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="panel">
+          <h3>Heatmap de atividade</h3>
+          <p class="panel-desc">Distribuicao de visitas por hora e dia da semana.</p>
+          <div id="heatmap-container" class="heatmap-container"></div>
+        </div>
+        <div class="panel">
+          <h3>Comparativo de sites</h3>
+          <p class="panel-desc">KPIs lado a lado de todos os sites.</p>
+          <div class="table-wrap">
+            <table id="comparison-table">
+              <thead>
+                <tr>
+                  <th>Site</th>
+                  <th>Total</th>
+                  <th>Periodo</th>
+                  <th>Sessoes</th>
+                  <th>Mobile</th>
+                  <th>Load</th>
+                  <th>Ultimo</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -240,14 +272,25 @@
         </div>
       </div>
 
-      <div class="panel">
-        <div class="panel-head">
-          <div>
-            <h2>Performance</h2>
-            <p>Metricas medias de carregamento.</p>
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Regioes por timezone</h2>
+              <p>Distribuicao geografica.</p>
+            </div>
           </div>
+          <div id="timezone-map" class="timezone-map"></div>
         </div>
-        <div class="card-grid" id="site-performance"></div>
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Performance</h2>
+              <p>Metricas medias de carregamento.</p>
+            </div>
+          </div>
+          <div class="card-grid" id="site-performance"></div>
+        </div>
       </div>
 
       <div class="panel">
@@ -278,6 +321,11 @@
   </main>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- Loading Overlay -->
+  <div id="loading-overlay" class="loading-overlay" aria-hidden="true">
+    <div class="loading-spinner"></div>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="config.js"></script>
