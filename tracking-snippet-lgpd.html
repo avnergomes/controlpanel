@@ -1,0 +1,114 @@
+<!--
+═══════════════════════════════════════════════════════════════════════════
+DATAGEO TRACKING SNIPPET - LGPD COMPLIANT
+═══════════════════════════════════════════════════════════════════════════
+
+Snippet ÚNICO para todos os sites. Cole antes do </body> em cada site.
+Substitua URL_DO_WEBAPP pela URL do Google Apps Script após implantar.
+
+Campos coletados (18 - todos anônimos):
+- timestamp, timezone, timezoneOffset
+- page, pathname, referrer, pageTitle
+- language, deviceType, screenOrientation
+- connectionType, loadTime
+- utmSource, utmMedium, utmCampaign, utmTerm, utmContent
+- prefersColorScheme
+
+═══════════════════════════════════════════════════════════════════════════
+-->
+
+<!-- VERSÃO MINIFICADA (recomendada) -->
+<script>
+(function(){var T='https://script.google.com/macros/s/AKfycbyk8VzLygqFmid0cSB5Qge8yRKRV-hJNvWICSZBPrOCnyJyTd21d-6mNRjyJ7Nlr_36Q/exec';function d(){var u=navigator.userAgent.toLowerCase();if(/tablet|ipad|playbook|silk/i.test(u))return'tablet';if(/mobile|iphone|ipod|android|blackberry|opera mini|iemobile/i.test(u))return'mobile';return'desktop'}function g(p){try{return new URLSearchParams(location.search).get(p)||''}catch(e){return''}}var o={timestamp:new Date().toISOString(),timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||'',timezoneOffset:new Date().getTimezoneOffset(),page:location.href,pathname:location.pathname,referrer:document.referrer||'direct',pageTitle:document.title,language:navigator.language||'',deviceType:d(),screenOrientation:screen.orientation?screen.orientation.type.split('-')[0]:'',connectionType:navigator.connection?navigator.connection.effectiveType:'',loadTime:0,utmSource:g('utm_source'),utmMedium:g('utm_medium'),utmCampaign:g('utm_campaign'),utmTerm:g('utm_term'),utmContent:g('utm_content'),prefersColorScheme:matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light',origin:location.origin};function s(){setTimeout(function(){o.loadTime=Math.round(performance.now());fetch(T,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(o)}).catch(function(){})},100)}if(document.readyState==='complete')s();else addEventListener('load',s)})();
+</script>
+
+
+<!--
+═══════════════════════════════════════════════════════════════════════════
+VERSÃO EXPANDIDA (para referência/debug)
+═══════════════════════════════════════════════════════════════════════════
+-->
+<!--
+<script>
+(function() {
+  // URL do Google Apps Script - Tracking Central
+  var TRACKING_URL = 'https://script.google.com/macros/s/AKfycbyk8VzLygqFmid0cSB5Qge8yRKRV-hJNvWICSZBPrOCnyJyTd21d-6mNRjyJ7Nlr_36Q/exec';
+
+  // Detectar tipo de dispositivo (genérico)
+  function getDeviceType() {
+    var ua = navigator.userAgent.toLowerCase();
+    if (/tablet|ipad|playbook|silk/i.test(ua)) return 'tablet';
+    if (/mobile|iphone|ipod|android|blackberry|opera mini|iemobile/i.test(ua)) return 'mobile';
+    return 'desktop';
+  }
+
+  // Obter parâmetro UTM
+  function getUTM(param) {
+    try {
+      return new URLSearchParams(location.search).get(param) || '';
+    } catch(e) {
+      return '';
+    }
+  }
+
+  // Dados LGPD-compliant (18 campos anônimos)
+  var data = {
+    // Temporal (essencial)
+    timestamp: new Date().toISOString(),
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || '',
+    timezoneOffset: new Date().getTimezoneOffset(),
+
+    // Navegação
+    page: location.href,
+    pathname: location.pathname,
+    referrer: document.referrer || 'direct',
+    pageTitle: document.title,
+
+    // Idioma
+    language: navigator.language || '',
+
+    // Dispositivo (genérico)
+    deviceType: getDeviceType(),
+    screenOrientation: screen.orientation ? screen.orientation.type.split('-')[0] : '',
+
+    // Conexão
+    connectionType: navigator.connection ? navigator.connection.effectiveType : '',
+
+    // Performance
+    loadTime: 0,
+
+    // Marketing
+    utmSource: getUTM('utm_source'),
+    utmMedium: getUTM('utm_medium'),
+    utmCampaign: getUTM('utm_campaign'),
+    utmTerm: getUTM('utm_term'),
+    utmContent: getUTM('utm_content'),
+
+    // Preferências
+    prefersColorScheme: matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light',
+
+    // Origin (para identificação do site)
+    origin: location.origin
+  };
+
+  // Enviar após carregamento
+  function sendData() {
+    setTimeout(function() {
+      data.loadTime = Math.round(performance.now());
+      fetch(TRACKING_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(data)
+      }).catch(function() {});
+    }, 100);
+  }
+
+  if (document.readyState === 'complete') {
+    sendData();
+  } else {
+    addEventListener('load', sendData);
+  }
+})();
+</script>
+-->
