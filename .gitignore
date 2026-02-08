@@ -23,3 +23,6 @@ sheets.txt
 # Temp
 *.tmp
 *.temp
+
+# Google Apps Script (secrets)
+*.gs
