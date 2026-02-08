@@ -5,7 +5,7 @@ const CONFIG = {
   proxyUrl: "https://script.google.com/macros/s/AKfycbyk8VzLygqFmid0cSB5Qge8yRKRV-hJNvWlCSZBPrOCnyJyTd21d-6mNRjyJ7NIr_-36Q/exec",
   proxyToken: "eb7f92a4-001d-4fac-a0fc-d42f0119491c",
   sites: [
-    { key: "datageoparana", name: "Datageo Parana", kind: "precos" },
+    { key: "datageoparana", name: "Datageo Parana", kind: "datageo" },
     { key: "portfolio", name: "Portfolio", kind: "portfolio" },
     { key: "vbp-parana", name: "VBP Parana", kind: "vbp" },
     { key: "precos-florestais", name: "Precos Florestais", kind: "precos" },
@@ -18,6 +18,29 @@ const CONFIG = {
 
 // Field schemas for each site type - eliminates magic strings in normalizers
 const FIELD_SCHEMAS = {
+  datageo: {
+    timestamp: ["timestamp", "Timestamp"],
+    url: ["page", "Page", "url", "URL"],
+    path: ["pathname", "Pathname", "path"],
+    referrer: ["referrer", "Referrer"],
+    timezone: ["timezone", "Timezone"],
+    sessionId: ["sessionId", "Session ID", "session id"],
+    userAgent: ["userAgent", "User Agent", "user agent"],
+    os: [],
+    browser: [],
+    deviceType: [],
+    language: ["language", "Language"],
+    screenWidth: ["screenWidth", "Screen Width"],
+    screenHeight: ["screenHeight", "Screen Height"],
+    connectionType: ["connectionType", "Connection Type"],
+    loadTime: ["loadTime", "LoadTime", "Load Time"],
+    firstContentfulPaint: ["firstContentfulPaint", "FirstContentfulPaint"],
+    domInteractiveTime: ["domInteractiveTime", "DomInteractiveTime"],
+    isMobile: ["isMobile", "Is Mobile"],
+    utmSource: ["utmSource", "UTM Source"],
+    utmMedium: ["utmMedium", "UTM Medium"],
+    utmCampaign: ["utmCampaign", "UTM Campaign"],
+  },
   portfolio: {
     timestamp: ["Client Timestamp", "Timestamp", "client timestamp", "timestamp"],
     url: ["Page URL", "URL", "page url", "url", "page"],

@@ -290,7 +290,21 @@ function normalizeSiteRows(site, rows) {
 function normalizeRow(row, siteKey, kind, schema) {
   if (!row || typeof row !== "object") return null;
 
-  const ts = parseDate(getValue(row, schema.timestamp));
+  // Try schema timestamp fields first, then fallback to pattern matching
+  const timestampPattern = /^(timestamp|time|date|data|hora|created|criado)/i;
+  let ts = parseDate(getValue(row, schema.timestamp, timestampPattern));
+
+  // If still no timestamp, try to find any ISO date string in the row
+  if (!ts || isNaN(ts.getTime())) {
+    for (const key of Object.keys(row)) {
+      const value = row[key];
+      if (typeof value === "string" && value.match(/^\d{4}-\d{2}-\d{2}T/)) {
+        ts = parseDate(value);
+        if (ts && !isNaN(ts.getTime())) break;
+      }
+    }
+  }
+
   if (!ts || isNaN(ts.getTime())) return null;
 
   const url = getValue(row, schema.url) || "";
@@ -383,8 +397,14 @@ function normalizeRow(row, siteKey, kind, schema) {
 // FIELD EXTRACTION HELPERS
 // ═══════════════════════════════════════════════════════════════════════════
 
-function getValue(row, names) {
-  if (!names || !Array.isArray(names) || names.length === 0) return null;
+function getValue(row, names, fallbackPattern = null) {
+  if (!names || !Array.isArray(names) || names.length === 0) {
+    // If no names provided but fallbackPattern exists, try pattern matching
+    if (fallbackPattern) {
+      return getValueByKeyMatch(row, fallbackPattern);
+    }
+    return null;
+  }
 
   const lookup = Object.keys(row).reduce((acc, key) => {
     acc[key.toLowerCase()] = row[key];
@@ -394,6 +414,11 @@ function getValue(row, names) {
   for (const name of names) {
     const value = lookup[name.toLowerCase()];
     if (value !== undefined && value !== null && value !== "") return value;
+  }
+
+  // Fallback: try pattern matching if provided
+  if (fallbackPattern) {
+    return getValueByKeyMatch(row, fallbackPattern);
   }
   return null;
 }
