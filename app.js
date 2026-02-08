@@ -20,38 +20,56 @@ const state = {
 };
 
 const CACHE_KEY = "controlpanel-cache-v6";
-const AUTH_HASH = "dcf887743f1db891e54fbf07efeda87afaa6cfe596c0e9369072ec4b0eca7c1e";
-const AUTH_SESSION_KEY = "controlpanel-auth";
+const AUTH_SESSION_KEY = "controlpanel-session-token";
 
 // ═══════════════════════════════════════════════════════════════════════════
-// AUTHENTICATION
+// AUTHENTICATION (Server-side validation)
 // ═══════════════════════════════════════════════════════════════════════════
 
-async function sha256(message) {
-  const msgBuffer = new TextEncoder().encode(message);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+function getSessionToken() {
+  return sessionStorage.getItem(AUTH_SESSION_KEY);
 }
 
 function isAuthenticated() {
-  return sessionStorage.getItem(AUTH_SESSION_KEY) === AUTH_HASH;
+  return !!getSessionToken();
+}
+
+function clearSession() {
+  sessionStorage.removeItem(AUTH_SESSION_KEY);
 }
 
 async function handleLogin(event) {
   event.preventDefault();
   const password = document.getElementById("login-password").value;
-  const hash = await sha256(password);
   const errorEl = document.getElementById("login-error");
+  const submitBtn = event.target.querySelector('button[type="submit"]');
 
-  if (hash === AUTH_HASH) {
-    sessionStorage.setItem(AUTH_SESSION_KEY, AUTH_HASH);
-    document.getElementById("login-overlay").classList.add("hidden");
-    initApp();
-  } else {
+  // Disable button during request
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Entrando...";
+
+  try {
+    // Validate password on server
+    const response = await fetch(
+      `${CONFIG.proxyUrl}?action=login&pw=${encodeURIComponent(password)}`
+    );
+    const result = await response.json();
+
+    if (result.success && result.token) {
+      sessionStorage.setItem(AUTH_SESSION_KEY, result.token);
+      document.getElementById("login-overlay").classList.add("hidden");
+      initApp();
+    } else {
+      errorEl.hidden = false;
+      document.getElementById("login-password").value = "";
+      document.getElementById("login-password").focus();
+    }
+  } catch (err) {
+    errorEl.textContent = "Erro de conexão";
     errorEl.hidden = false;
-    document.getElementById("login-password").value = "";
-    document.getElementById("login-password").focus();
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Entrar";
   }
 }
 
@@ -227,7 +245,12 @@ async function fetchAllSites() {
   const status = {};
 
   try {
-    const url = `${CONFIG.proxyUrl}?token=${encodeURIComponent(CONFIG.proxyToken)}`;
+    const sessionToken = getSessionToken();
+    if (!sessionToken) {
+      throw new Error("unauthorized");
+    }
+
+    const url = `${CONFIG.proxyUrl}?action=getData&token=${encodeURIComponent(sessionToken)}`;
     const response = await fetch(url, { redirect: "follow" });
 
     if (!response.ok) {
@@ -239,8 +262,16 @@ async function fetchAllSites() {
     try {
       payload = JSON.parse(text);
     } catch (parseErr) {
-      console.error("[ControlPanel] Resposta nao-JSON do proxy:", text.substring(0, 500));
       throw new Error("Resposta invalida do proxy");
+    }
+
+    // Handle session expiry
+    if (payload.error === "unauthorized") {
+      clearSession();
+      document.getElementById("login-overlay").classList.remove("hidden");
+      document.getElementById("login-error").textContent = "Sessão expirada";
+      document.getElementById("login-error").hidden = false;
+      throw new Error("unauthorized");
     }
 
     if (payload.error) {
