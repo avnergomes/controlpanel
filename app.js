@@ -1100,26 +1100,22 @@ function renderPerformanceKpis(records) {
   if (!target) return;
   target.innerHTML = "";
 
-  const metrics = [
-    { label: "Tempo medio de carga", key: "loadTime", divisor: 1000, unit: "s" },
-    { label: "FCP medio", key: "firstContentfulPaint", divisor: 1000, unit: "s" },
-    { label: "DOM Interactive", key: "domInteractiveTime", divisor: 1000, unit: "s" },
-  ];
+  // Apenas loadTime é coletado pelo tracking LGPD
+  const loadTimes = records.map((r) => r.loadTime).filter((v) => v && v > 0);
 
-  let hasAny = false;
-  metrics.forEach((m) => {
-    const values = records.map((r) => r[m.key]).filter((v) => v && v > 0);
-    if (values.length) hasAny = true;
-    const avg = values.length ? (values.reduce((a, b) => a + b, 0) / values.length / m.divisor).toFixed(2) + m.unit : "N/D";
-    target.appendChild(makeCard(m.label, avg, "perf"));
-  });
-
-  if (!hasAny) {
-    const note = document.createElement("p");
-    note.className = "perf-note";
-    note.textContent = "Dados de performance nao disponiveis — os scripts de rastreamento nao estao capturando metricas de timing.";
-    target.appendChild(note);
+  if (loadTimes.length === 0) {
+    target.parentElement.style.display = "none";
+    return;
   }
+
+  target.parentElement.style.display = "";
+  const avg = (loadTimes.reduce((a, b) => a + b, 0) / loadTimes.length / 1000).toFixed(2);
+  const min = (Math.min(...loadTimes) / 1000).toFixed(2);
+  const max = (Math.max(...loadTimes) / 1000).toFixed(2);
+
+  target.appendChild(makeCard("Tempo medio", avg + "s", "perf"));
+  target.appendChild(makeCard("Mais rapido", min + "s", "perf"));
+  target.appendChild(makeCard("Mais lento", max + "s", "perf"));
 }
 
 function renderLatest(records) {
