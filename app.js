@@ -567,12 +567,17 @@ function showLoading(isLoading) {
 }
 
 function renderEmptyState(container, message = "Nenhum dado disponivel para o periodo selecionado.") {
-  container.innerHTML = `
-    <div class="empty-state">
-      <div class="empty-icon">📊</div>
-      <p>${message}</p>
-    </div>
-  `;
+  container.innerHTML = "";
+  const wrapper = document.createElement("div");
+  wrapper.className = "empty-state";
+  const icon = document.createElement("div");
+  icon.className = "empty-icon";
+  icon.textContent = "📊";
+  const p = document.createElement("p");
+  p.textContent = message;
+  wrapper.appendChild(icon);
+  wrapper.appendChild(p);
+  container.appendChild(wrapper);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -829,11 +834,14 @@ function renderTopPages() {
   sorted.forEach(([title, count]) => {
     const tr = document.createElement("tr");
     const pct = ((count / total) * 100).toFixed(1);
-    tr.innerHTML = `
-      <td title="${title}">${truncate(title, 60)}</td>
-      <td>${formatNumber(count)}</td>
-      <td>${pct}%</td>
-    `;
+    const td1 = document.createElement("td");
+    td1.textContent = truncate(title, 60);
+    td1.setAttribute("title", title);
+    const td2 = document.createElement("td");
+    td2.textContent = formatNumber(count);
+    const td3 = document.createElement("td");
+    td3.textContent = pct + "%";
+    tr.append(td1, td2, td3);
     table.appendChild(tr);
   });
 }
@@ -908,28 +916,43 @@ function renderHeatmap() {
     if (matrix[day][hour] > maxCount) maxCount = matrix[day][hour];
   });
 
-  // Generate HTML grid
-  let html = '<div class="heatmap-grid">';
-  html += '<div class="heatmap-corner"></div>';
+  // Generate grid using DOM API
+  container.innerHTML = "";
+  const grid = document.createElement("div");
+  grid.className = "heatmap-grid";
+
+  const corner = document.createElement("div");
+  corner.className = "heatmap-corner";
+  grid.appendChild(corner);
 
   // Hour headers
   for (let h = 0; h < 24; h++) {
-    html += `<div class="heatmap-header">${String(h).padStart(2, "0")}</div>`;
+    const header = document.createElement("div");
+    header.className = "heatmap-header";
+    header.textContent = String(h).padStart(2, "0");
+    grid.appendChild(header);
   }
 
   // Rows
   for (let d = 0; d < 7; d++) {
-    html += `<div class="heatmap-day">${DAYS_PT[d]}</div>`;
+    const dayLabel = document.createElement("div");
+    dayLabel.className = "heatmap-day";
+    dayLabel.textContent = DAYS_PT[d];
+    grid.appendChild(dayLabel);
+
     for (let h = 0; h < 24; h++) {
       const count = matrix[d][h];
       const intensity = maxCount > 0 ? count / maxCount : 0;
       const bg = getHeatmapColor(intensity);
-      html += `<div class="heatmap-cell" style="background:${bg}" title="${DAYS_PT[d]} ${h}h: ${count} visitas"></div>`;
+      const cell = document.createElement("div");
+      cell.className = "heatmap-cell";
+      cell.style.background = bg;
+      cell.setAttribute("title", `${DAYS_PT[d]} ${h}h: ${count} visitas`);
+      grid.appendChild(cell);
     }
   }
 
-  html += '</div>';
-  container.innerHTML = html;
+  container.appendChild(grid);
 }
 
 function getHeatmapColor(intensity) {
@@ -969,21 +992,36 @@ function renderTimezoneMap(records) {
   const sorted = Array.from(regionCounts.entries()).sort((a, b) => b[1].count - a[1].count);
   const total = records.length;
 
-  let html = '<div class="timezone-list">';
+  container.innerHTML = "";
+  const list = document.createElement("div");
+  list.className = "timezone-list";
+
   sorted.forEach(([region, data]) => {
     const pct = ((data.count / total) * 100).toFixed(1);
-    html += `
-      <div class="timezone-item">
-        <span class="tz-flag">${data.flag}</span>
-        <span class="tz-region">${region}</span>
-        <span class="tz-count">${formatNumber(data.count)}</span>
-        <span class="tz-pct">${pct}%</span>
-      </div>
-    `;
-  });
-  html += '</div>';
+    const item = document.createElement("div");
+    item.className = "timezone-item";
 
-  container.innerHTML = html;
+    const flag = document.createElement("span");
+    flag.className = "tz-flag";
+    flag.textContent = data.flag;
+
+    const regionEl = document.createElement("span");
+    regionEl.className = "tz-region";
+    regionEl.textContent = region;
+
+    const countEl = document.createElement("span");
+    countEl.className = "tz-count";
+    countEl.textContent = formatNumber(data.count);
+
+    const pctEl = document.createElement("span");
+    pctEl.className = "tz-pct";
+    pctEl.textContent = pct + "%";
+
+    item.append(flag, regionEl, countEl, pctEl);
+    list.appendChild(item);
+  });
+
+  container.appendChild(list);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1080,15 +1118,22 @@ function renderComparison() {
     const lastAccess = rows.length ? formatDateTime(rows[rows.length - 1].ts) : "--";
 
     const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td style="border-left: 3px solid ${CHART_COLORS.sites[index]}">${site.name}</td>
-      <td>${formatNumber(total)}</td>
-      <td>${formatNumber(periodCount)}</td>
-      <td>${formatNumber(uniqueSessions)}</td>
-      <td>${mobilePct}%</td>
-      <td>${avgLoad}s</td>
-      <td>${lastAccess}</td>
-    `;
+    const tdName = document.createElement("td");
+    tdName.textContent = site.name;
+    tdName.style.borderLeft = `3px solid ${CHART_COLORS.sites[index]}`;
+    const tdTotal = document.createElement("td");
+    tdTotal.textContent = formatNumber(total);
+    const tdPeriod = document.createElement("td");
+    tdPeriod.textContent = formatNumber(periodCount);
+    const tdSessions = document.createElement("td");
+    tdSessions.textContent = formatNumber(uniqueSessions);
+    const tdMobile = document.createElement("td");
+    tdMobile.textContent = mobilePct + "%";
+    const tdLoad = document.createElement("td");
+    tdLoad.textContent = avgLoad + "s";
+    const tdLast = document.createElement("td");
+    tdLast.textContent = lastAccess;
+    tr.append(tdName, tdTotal, tdPeriod, tdSessions, tdMobile, tdLoad, tdLast);
     tbody.appendChild(tr);
   });
 }
