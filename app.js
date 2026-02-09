@@ -765,7 +765,7 @@ function renderConnectionChart() {
 
 function renderThemeChart() {
   const counts = aggregateCounts(state.data, (r) => {
-    const theme = r.prefersColorScheme || "";
+    const theme = String(r.prefersColorScheme || "");
     if (theme.toLowerCase() === "dark") return "Dark";
     if (theme.toLowerCase() === "light") return "Light";
     return "Unknown";
@@ -785,7 +785,7 @@ function renderThemeChart() {
 
 function renderOrientationChart() {
   const counts = aggregateCounts(state.data, (r) => {
-    const orientation = r.screenOrientation || "";
+    const orientation = String(r.screenOrientation || "");
     if (orientation.toLowerCase().includes("portrait")) return "Portrait";
     if (orientation.toLowerCase().includes("landscape")) return "Landscape";
     return "Unknown";
