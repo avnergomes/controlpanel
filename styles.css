@@ -363,6 +363,13 @@ select:focus-visible {
   min-height: 240px;
 }
 
+.chart-wrap h4 {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin-bottom: 12px;
+  font-weight: 500;
+}
+
 .table-wrap {
   overflow-x: auto;
 }

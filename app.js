@@ -415,11 +415,12 @@ function normalizeRow(row, siteKey, kind, schema) {
     result.returning = undefined;
   }
 
-  // Emprego-specific fields
-  if (kind === "emprego") {
-    result.screenOrientation = getValue(row, schema.screenOrientation) || "";
-    result.prefersColorScheme = getValue(row, schema.prefersColorScheme) || "";
-  }
+  // Additional LGPD fields (available for all sites)
+  result.pageTitle = getValue(row, schema.pageTitle) || "";
+  result.screenOrientation = getValue(row, schema.screenOrientation) || "";
+  result.prefersColorScheme = getValue(row, schema.prefersColorScheme) || "";
+  result.utmTerm = getValue(row, schema.utmTerm) || "";
+  result.utmContent = getValue(row, schema.utmContent) || "";
 
   return result;
 }
@@ -635,6 +636,11 @@ function renderOverview() {
   renderOverviewDevices();
   renderOverviewBrowsers();
   renderOverviewReturning();
+  renderUTMCharts();
+  renderConnectionChart();
+  renderThemeChart();
+  renderOrientationChart();
+  renderTopPages();
   renderHeatmap();
   renderComparison();
   renderTopPeriods();
@@ -728,6 +734,111 @@ function renderOverviewReturning() {
   }
 
   renderDoughnutChart("overview-returning-chart", [["Novos", newVisitors], ["Retornantes", returning]], "Visitantes");
+}
+
+function renderUTMCharts() {
+  // UTM Source
+  const sourceCounts = aggregateCounts(state.data, (r) => r.utmSource || "Direct");
+  renderBarChart("utm-source-chart", sourceCounts, "UTM Source");
+
+  // UTM Medium
+  const mediumCounts = aggregateCounts(state.data, (r) => r.utmMedium || "None");
+  renderBarChart("utm-medium-chart", mediumCounts, "UTM Medium");
+
+  // UTM Campaign
+  const campaignCounts = aggregateCounts(state.data, (r) => r.utmCampaign || "None");
+  renderBarChart("utm-campaign-chart", campaignCounts, "UTM Campaign");
+}
+
+function renderConnectionChart() {
+  const counts = aggregateCounts(state.data, (r) => r.connectionType || "Unknown");
+  const ctx = document.getElementById("overview-connection-chart");
+  if (!ctx) return;
+
+  if (counts.length === 0 || (counts.length === 1 && counts[0][0] === "Unknown")) {
+    ctx.parentElement.innerHTML = '<div class="empty-state small"><p>Sem dados</p></div>';
+    return;
+  }
+
+  renderDoughnutChart("overview-connection-chart", counts, "Conexao");
+}
+
+function renderThemeChart() {
+  const counts = aggregateCounts(state.data, (r) => {
+    const theme = r.prefersColorScheme || "";
+    if (theme.toLowerCase() === "dark") return "Dark";
+    if (theme.toLowerCase() === "light") return "Light";
+    return "Unknown";
+  });
+
+  const ctx = document.getElementById("overview-theme-chart");
+  if (!ctx) return;
+
+  const filtered = counts.filter(([k]) => k !== "Unknown");
+  if (filtered.length === 0) {
+    ctx.parentElement.innerHTML = '<div class="empty-state small"><p>Sem dados</p></div>';
+    return;
+  }
+
+  renderDoughnutChart("overview-theme-chart", filtered, "Tema");
+}
+
+function renderOrientationChart() {
+  const counts = aggregateCounts(state.data, (r) => {
+    const orientation = r.screenOrientation || "";
+    if (orientation.toLowerCase().includes("portrait")) return "Portrait";
+    if (orientation.toLowerCase().includes("landscape")) return "Landscape";
+    return "Unknown";
+  });
+
+  const ctx = document.getElementById("overview-orientation-chart");
+  if (!ctx) return;
+
+  const filtered = counts.filter(([k]) => k !== "Unknown");
+  if (filtered.length === 0) {
+    ctx.parentElement.innerHTML = '<div class="empty-state small"><p>Sem dados</p></div>';
+    return;
+  }
+
+  renderDoughnutChart("overview-orientation-chart", filtered, "Orientacao");
+}
+
+function renderTopPages() {
+  const table = document.querySelector("#top-pages tbody");
+  if (!table) return;
+  table.innerHTML = "";
+
+  const pageCounts = new Map();
+  state.data.forEach((row) => {
+    const title = row.pageTitle || row.path || row.url || "Unknown";
+    if (title && title !== "Unknown") {
+      pageCounts.set(title, (pageCounts.get(title) || 0) + 1);
+    }
+  });
+
+  if (pageCounts.size === 0) {
+    table.innerHTML = '<tr><td colspan="3" class="empty-cell">Nenhum dado</td></tr>';
+    return;
+  }
+
+  const sorted = Array.from(pageCounts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  const total = state.data.length;
+
+  sorted.forEach(([title, count]) => {
+    const tr = document.createElement("tr");
+    const pct = ((count / total) * 100).toFixed(1);
+    tr.innerHTML = `
+      <td title="${title}">${truncate(title, 60)}</td>
+      <td>${formatNumber(count)}</td>
+      <td>${pct}%</td>
+    `;
+    table.appendChild(tr);
+  });
+}
+
+function truncate(str, maxLen) {
+  if (!str || str.length <= maxLen) return str;
+  return str.substring(0, maxLen - 3) + "...";
 }
 
 function renderSiteChart(siteKey, records) {
