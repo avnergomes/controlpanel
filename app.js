@@ -49,10 +49,12 @@ async function handleLogin(event) {
   submitBtn.textContent = "Entrando...";
 
   try {
-    // Validate password on server
-    const response = await fetch(
-      `${CONFIG.proxyUrl}?action=login&pw=${encodeURIComponent(password)}`
-    );
+    // Validate password on server (POST é mais seguro que GET com senha em URL)
+    const response = await fetch(CONFIG.proxyUrl, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ action: "login", password: password })
+    });
     const result = await response.json();
 
     if (result.success && result.token) {
