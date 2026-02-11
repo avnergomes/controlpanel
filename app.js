@@ -23,6 +23,8 @@ const state = {
 
 const CACHE_KEY = "controlpanel-cache-v6";
 const AUTH_SESSION_KEY = "controlpanel-session-token";
+const GEOJSON_CACHE_KEY = "controlpanel-geojson-v1";
+const GEOJSON_CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 // ═══════════════════════════════════════════════════════════════════════════
 // AUTHENTICATION (Server-side validation)
@@ -81,16 +83,17 @@ async function handleLogin(event) {
 // INITIALIZATION & LIFECYCLE
 // ═══════════════════════════════════════════════════════════════════════════
 
-function initApp() {
+async function initApp() {
   document.body.classList.add("loaded");
   bindNavigation();
   bindControls();
   requestNotificationPermission();
   document.getElementById("refresh-btn").addEventListener("click", () => refreshData(true));
 
-  // Load timezone GeoJSON for map rendering
-  loadTimezoneGeoJSON();
+  // Load GeoJSON first (from cache if available, very fast)
+  await loadTimezoneGeoJSON();
 
+  // Then load data cache and render
   const cached = loadCache();
   if (cached) {
     state.data = cached.data;
@@ -100,13 +103,33 @@ function initApp() {
     updateStatus();
   }
 
+  // Fetch fresh data (won't show loading if we have cache)
   refreshData(false);
-  state.pollInterval = setInterval(() => refreshData(false), CONFIG.pollMs);
+
+  // Poll for updates less frequently if we have data
+  const pollInterval = cached ? CONFIG.pollMs : 30000; // 30s for first load
+  state.pollInterval = setInterval(() => refreshData(false), pollInterval);
 }
 
 async function loadTimezoneGeoJSON() {
+  // Try to load from localStorage cache first
   try {
-    // Load both GeoJSON files in parallel
+    const cached = localStorage.getItem(GEOJSON_CACHE_KEY);
+    if (cached) {
+      const { timezones, countries, timestamp } = JSON.parse(cached);
+      const age = Date.now() - timestamp;
+      if (age < GEOJSON_CACHE_TTL && timezones && countries) {
+        state.timezoneGeoJSON = timezones;
+        state.countriesGeoJSON = countries;
+        return; // Use cached data, no re-render needed
+      }
+    }
+  } catch (e) {
+    // Cache read failed, continue to fetch
+  }
+
+  // Fetch from network
+  try {
     const [tzResponse, countriesResponse] = await Promise.all([
       fetch("assets/timezones.geojson"),
       fetch("assets/countries.geojson")
@@ -119,9 +142,23 @@ async function loadTimezoneGeoJSON() {
       state.countriesGeoJSON = await countriesResponse.json();
     }
 
-    // Re-render if already has data
-    if (state.data.length > 0) {
-      renderCurrentView();
+    // Cache for future use
+    try {
+      localStorage.setItem(GEOJSON_CACHE_KEY, JSON.stringify({
+        timezones: state.timezoneGeoJSON,
+        countries: state.countriesGeoJSON,
+        timestamp: Date.now()
+      }));
+    } catch (e) {
+      // Storage full or unavailable, ignore
+    }
+
+    // Only re-render if data is already loaded and view needs the map
+    if (state.data.length > 0 && !state.isLoading) {
+      const route = (location.hash || "#/overview").replace("#/", "");
+      if (route === "overview" || route === "" || state.bySite[route]) {
+        renderCurrentView();
+      }
     }
   } catch (error) {
     console.warn("Failed to load GeoJSON files:", error);
@@ -245,9 +282,14 @@ async function refreshData(force) {
 
   const previousMax = getMaxTimestamp(state.data);
   const previousCount = state.data.length;
+  const hasCache = previousCount > 0;
 
   state.isLoading = true;
-  showLoading(true);
+
+  // Only show loading overlay on initial load or forced refresh without cache
+  if (force || !hasCache) {
+    showLoading(true);
+  }
 
   const { data, status } = await fetchAllSites();
   const nextMax = getMaxTimestamp(data);
@@ -590,9 +632,26 @@ function indexData() {
 // LOADING & EMPTY STATES
 // ═══════════════════════════════════════════════════════════════════════════
 
+let loadingTimeout = null;
+
 function showLoading(isLoading) {
-  state.isLoading = isLoading;
-  document.body.classList.toggle("is-loading", isLoading);
+  if (isLoading) {
+    // Delay showing loading to prevent flicker for fast operations
+    if (!loadingTimeout) {
+      loadingTimeout = setTimeout(() => {
+        if (state.isLoading) {
+          document.body.classList.add("is-loading");
+        }
+      }, 300); // 300ms delay
+    }
+  } else {
+    // Hide immediately
+    if (loadingTimeout) {
+      clearTimeout(loadingTimeout);
+      loadingTimeout = null;
+    }
+    document.body.classList.remove("is-loading");
+  }
 }
 
 function renderEmptyState(container, message = "Nenhum dado disponivel para o periodo selecionado.") {
