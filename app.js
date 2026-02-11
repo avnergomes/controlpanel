@@ -23,7 +23,7 @@ const state = {
 
 const CACHE_KEY = "controlpanel-cache-v6";
 const AUTH_SESSION_KEY = "controlpanel-session-token";
-const GEOJSON_CACHE_KEY = "controlpanel-geojson-v1";
+const GEOJSON_CACHE_KEY = "controlpanel-geojson-v2"; // Bumped version to force refresh
 const GEOJSON_CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -112,20 +112,29 @@ async function initApp() {
 }
 
 async function loadTimezoneGeoJSON() {
+  // Validate GeoJSON has required structure
+  const isValidGeoJSON = (data) => {
+    return data &&
+           typeof data === 'object' &&
+           Array.isArray(data.features) &&
+           data.features.length > 0;
+  };
+
   // Try to load from localStorage cache first
   try {
     const cached = localStorage.getItem(GEOJSON_CACHE_KEY);
     if (cached) {
       const { timezones, countries, timestamp } = JSON.parse(cached);
       const age = Date.now() - timestamp;
-      if (age < GEOJSON_CACHE_TTL && timezones && countries) {
+      if (age < GEOJSON_CACHE_TTL && isValidGeoJSON(timezones) && isValidGeoJSON(countries)) {
         state.timezoneGeoJSON = timezones;
         state.countriesGeoJSON = countries;
-        return; // Use cached data, no re-render needed
+        return; // Use cached data
       }
     }
   } catch (e) {
-    // Cache read failed, continue to fetch
+    // Cache read failed, clear corrupted cache
+    try { localStorage.removeItem(GEOJSON_CACHE_KEY); } catch (_) {}
   }
 
   // Fetch from network
@@ -136,28 +145,28 @@ async function loadTimezoneGeoJSON() {
     ]);
 
     if (tzResponse.ok) {
-      state.timezoneGeoJSON = await tzResponse.json();
+      const tzData = await tzResponse.json();
+      if (isValidGeoJSON(tzData)) {
+        state.timezoneGeoJSON = tzData;
+      }
     }
     if (countriesResponse.ok) {
-      state.countriesGeoJSON = await countriesResponse.json();
+      const countriesData = await countriesResponse.json();
+      if (isValidGeoJSON(countriesData)) {
+        state.countriesGeoJSON = countriesData;
+      }
     }
 
-    // Cache for future use
-    try {
-      localStorage.setItem(GEOJSON_CACHE_KEY, JSON.stringify({
-        timezones: state.timezoneGeoJSON,
-        countries: state.countriesGeoJSON,
-        timestamp: Date.now()
-      }));
-    } catch (e) {
-      // Storage full or unavailable, ignore
-    }
-
-    // Only re-render if data is already loaded and view needs the map
-    if (state.data.length > 0 && !state.isLoading) {
-      const route = (location.hash || "#/overview").replace("#/", "");
-      if (route === "overview" || route === "" || state.bySite[route]) {
-        renderCurrentView();
+    // Cache only if both are valid
+    if (isValidGeoJSON(state.timezoneGeoJSON) && isValidGeoJSON(state.countriesGeoJSON)) {
+      try {
+        localStorage.setItem(GEOJSON_CACHE_KEY, JSON.stringify({
+          timezones: state.timezoneGeoJSON,
+          countries: state.countriesGeoJSON,
+          timestamp: Date.now()
+        }));
+      } catch (e) {
+        // Storage full or unavailable, ignore
       }
     }
   } catch (error) {
