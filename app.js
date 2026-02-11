@@ -968,60 +968,215 @@ function getHeatmapColor(intensity) {
 // TIMEZONE MAP
 // ═══════════════════════════════════════════════════════════════════════════
 
+// World map SVG paths for major regions
+const WORLD_MAP_REGIONS = {
+  "Brasil": {
+    path: "M280,180 L320,175 L340,190 L350,220 L340,260 L310,280 L280,270 L260,240 L265,200 Z",
+    center: [300, 225]
+  },
+  "America do Sul": {
+    path: "M250,270 L280,270 L310,280 L300,320 L270,340 L250,310 Z",
+    center: [275, 300]
+  },
+  "America do Norte": {
+    path: "M150,80 L250,70 L280,100 L260,140 L200,150 L150,130 Z",
+    center: [210, 110]
+  },
+  "EUA": {
+    path: "M120,100 L220,95 L240,120 L220,145 L150,150 L110,130 Z",
+    center: [170, 120]
+  },
+  "Europa": {
+    path: "M420,80 L480,75 L500,95 L490,130 L450,140 L410,120 Z",
+    center: [455, 105]
+  },
+  "Asia": {
+    path: "M520,80 L620,70 L680,100 L670,160 L600,180 L530,150 L510,110 Z",
+    center: [590, 120]
+  },
+  "Oceania": {
+    path: "M620,220 L680,210 L710,240 L690,280 L640,285 L610,260 Z",
+    center: [660, 250]
+  },
+  "Outros": {
+    path: "M380,180 L420,175 L440,200 L430,230 L400,240 L375,220 Z",
+    center: [405, 205]
+  }
+};
+
+function getRecencyClass(lastAccess) {
+  if (!lastAccess) return "tz-old";
+  const now = new Date();
+  const diffMs = now - lastAccess;
+  const diffHours = diffMs / (1000 * 60 * 60);
+  const diffDays = diffHours / 24;
+
+  if (diffHours < 1) return "tz-recent";
+  if (diffDays < 1) return "tz-today";
+  if (diffDays < 7) return "tz-week";
+  return "tz-old";
+}
+
+function formatRelativeTime(date) {
+  if (!date) return "Nunca";
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffMins < 1) return "Agora";
+  if (diffMins < 60) return `${diffMins}min atras`;
+  if (diffHours < 24) return `${diffHours}h atras`;
+  if (diffDays < 7) return `${diffDays}d atras`;
+  return date.toLocaleDateString("pt-BR");
+}
+
 function renderTimezoneMap(records) {
-  const container = document.getElementById("timezone-map");
-  if (!container) return;
+  const mapContainer = document.getElementById("timezone-map");
+  const listContainer = document.getElementById("timezone-list");
+
+  if (!mapContainer) return;
 
   if (records.length === 0) {
-    container.innerHTML = '<div class="empty-state small"><p>Sem dados</p></div>';
+    mapContainer.innerHTML = '<div class="empty-state small"><p>Sem dados de timezone</p></div>';
+    if (listContainer) listContainer.innerHTML = '';
     return;
   }
 
-  // Group by region
-  const regionCounts = new Map();
+  // Group by region and find most recent access
+  const regionData = new Map();
   records.forEach((row) => {
     const tz = row.timezone || "";
     const regionInfo = TIMEZONE_REGIONS[tz] || { region: "Outros", flag: "🌍" };
     const key = regionInfo.region;
-    const current = regionCounts.get(key) || { count: 0, flag: regionInfo.flag };
+    const ts = row.ts ? new Date(row.ts) : null;
+
+    const current = regionData.get(key) || {
+      count: 0,
+      flag: regionInfo.flag,
+      lastAccess: null,
+      subregions: new Set()
+    };
     current.count++;
-    regionCounts.set(key, current);
+    if (regionInfo.subregion) current.subregions.add(regionInfo.subregion);
+    if (ts && (!current.lastAccess || ts > current.lastAccess)) {
+      current.lastAccess = ts;
+    }
+    regionData.set(key, current);
   });
 
-  // Sort by count
-  const sorted = Array.from(regionCounts.entries()).sort((a, b) => b[1].count - a[1].count);
   const total = records.length;
 
-  container.innerHTML = "";
-  const list = document.createElement("div");
-  list.className = "timezone-list";
+  // Render SVG world map
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.setAttribute("viewBox", "0 0 800 350");
+  svg.setAttribute("class", "world-map-svg");
 
-  sorted.forEach(([region, data]) => {
-    const pct = ((data.count / total) * 100).toFixed(1);
-    const item = document.createElement("div");
-    item.className = "timezone-item";
+  // Background
+  const bg = document.createElementNS(svgNS, "rect");
+  bg.setAttribute("width", "800");
+  bg.setAttribute("height", "350");
+  bg.setAttribute("fill", "rgba(255,255,255,0.02)");
+  bg.setAttribute("rx", "12");
+  svg.appendChild(bg);
 
-    const flag = document.createElement("span");
-    flag.className = "tz-flag";
-    flag.textContent = data.flag;
+  // Draw regions
+  Object.entries(WORLD_MAP_REGIONS).forEach(([regionName, regionGeo]) => {
+    const data = regionData.get(regionName);
+    const recencyClass = data ? getRecencyClass(data.lastAccess) : "tz-inactive";
 
-    const regionEl = document.createElement("span");
-    regionEl.className = "tz-region";
-    regionEl.textContent = region;
+    const group = document.createElementNS(svgNS, "g");
+    group.setAttribute("class", `map-region ${recencyClass}`);
+    group.setAttribute("data-region", regionName);
 
-    const countEl = document.createElement("span");
-    countEl.className = "tz-count";
-    countEl.textContent = formatNumber(data.count);
+    // Region path
+    const path = document.createElementNS(svgNS, "path");
+    path.setAttribute("d", regionGeo.path);
+    path.setAttribute("class", "region-path");
+    group.appendChild(path);
 
-    const pctEl = document.createElement("span");
-    pctEl.className = "tz-pct";
-    pctEl.textContent = pct + "%";
+    // Region label
+    const text = document.createElementNS(svgNS, "text");
+    text.setAttribute("x", regionGeo.center[0]);
+    text.setAttribute("y", regionGeo.center[1]);
+    text.setAttribute("class", "region-label");
+    text.textContent = regionName;
+    group.appendChild(text);
 
-    item.append(flag, regionEl, countEl, pctEl);
-    list.appendChild(item);
+    // Access info (if has data)
+    if (data) {
+      const infoText = document.createElementNS(svgNS, "text");
+      infoText.setAttribute("x", regionGeo.center[0]);
+      infoText.setAttribute("y", regionGeo.center[1] + 18);
+      infoText.setAttribute("class", "region-info");
+      infoText.textContent = formatRelativeTime(data.lastAccess);
+      group.appendChild(infoText);
+
+      // Tooltip on hover
+      group.setAttribute("title", `${regionName}: ${data.count} visitas, ultimo ${formatRelativeTime(data.lastAccess)}`);
+    }
+
+    svg.appendChild(group);
   });
 
-  container.appendChild(list);
+  mapContainer.innerHTML = "";
+  mapContainer.appendChild(svg);
+
+  // Render list below the map
+  if (listContainer) {
+    const sorted = Array.from(regionData.entries()).sort((a, b) => {
+      // Sort by most recent first
+      if (!a[1].lastAccess && !b[1].lastAccess) return b[1].count - a[1].count;
+      if (!a[1].lastAccess) return 1;
+      if (!b[1].lastAccess) return -1;
+      return b[1].lastAccess - a[1].lastAccess;
+    });
+
+    listContainer.innerHTML = "";
+    const list = document.createElement("div");
+    list.className = "timezone-list";
+
+    sorted.forEach(([region, data]) => {
+      const pct = ((data.count / total) * 100).toFixed(1);
+      const recencyClass = getRecencyClass(data.lastAccess);
+
+      const item = document.createElement("div");
+      item.className = `timezone-item ${recencyClass}`;
+
+      const flag = document.createElement("span");
+      flag.className = "tz-flag";
+      flag.textContent = data.flag;
+
+      const regionEl = document.createElement("span");
+      regionEl.className = "tz-region";
+      regionEl.textContent = region;
+
+      const subregionsEl = document.createElement("span");
+      subregionsEl.className = "tz-subregions";
+      if (data.subregions.size > 0) {
+        subregionsEl.textContent = Array.from(data.subregions).slice(0, 3).join(", ");
+      }
+
+      const timeEl = document.createElement("span");
+      timeEl.className = "tz-time";
+      timeEl.textContent = formatRelativeTime(data.lastAccess);
+
+      const countEl = document.createElement("span");
+      countEl.className = "tz-count";
+      countEl.textContent = formatNumber(data.count);
+
+      const pctEl = document.createElement("span");
+      pctEl.className = "tz-pct";
+      pctEl.textContent = pct + "%";
+
+      item.append(flag, regionEl, subregionsEl, timeEl, countEl, pctEl);
+      list.appendChild(item);
+    });
+
+    listContainer.appendChild(list);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

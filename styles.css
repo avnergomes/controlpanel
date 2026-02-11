@@ -479,7 +479,110 @@ tr:hover td {
    TIMEZONE MAP
    ═══════════════════════════════════════════════════════════════════════════ */
 
-.timezone-map {
+/* Legend */
+.tz-legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.tz-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.tz-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.tz-dot.tz-recent { background: #22c55e; }
+.tz-dot.tz-today { background: #38bdf8; }
+.tz-dot.tz-week { background: #f59e0b; }
+.tz-dot.tz-old { background: #64748b; }
+
+/* Map Container */
+.timezone-map-container {
+  padding: 16px 0;
+}
+
+.world-map-svg {
+  width: 100%;
+  height: auto;
+  max-height: 300px;
+}
+
+/* Map Regions */
+.map-region {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.map-region:hover {
+  filter: brightness(1.2);
+}
+
+.map-region:hover .region-path {
+  stroke-width: 3;
+}
+
+.region-path {
+  fill: rgba(100, 116, 139, 0.3);
+  stroke: rgba(255, 255, 255, 0.2);
+  stroke-width: 1.5;
+  transition: all 0.2s ease;
+}
+
+.map-region.tz-recent .region-path {
+  fill: rgba(34, 197, 94, 0.5);
+  stroke: #22c55e;
+}
+
+.map-region.tz-today .region-path {
+  fill: rgba(56, 189, 248, 0.4);
+  stroke: #38bdf8;
+}
+
+.map-region.tz-week .region-path {
+  fill: rgba(245, 158, 11, 0.4);
+  stroke: #f59e0b;
+}
+
+.map-region.tz-old .region-path {
+  fill: rgba(100, 116, 139, 0.4);
+  stroke: #64748b;
+}
+
+.map-region.tz-inactive .region-path {
+  fill: rgba(100, 116, 139, 0.15);
+  stroke: rgba(255, 255, 255, 0.1);
+}
+
+.region-label {
+  fill: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+.region-info {
+  fill: var(--muted);
+  font-size: 9px;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+.map-region.tz-recent .region-info { fill: #22c55e; }
+.map-region.tz-today .region-info { fill: #38bdf8; }
+.map-region.tz-week .region-info { fill: #f59e0b; }
+
+/* Timezone List */
+.timezone-list-container {
   padding: 8px 0;
 }
 
@@ -491,18 +594,24 @@ tr:hover td {
 
 .timezone-item {
   display: grid;
-  grid-template-columns: 32px 1fr auto auto;
+  grid-template-columns: 32px 100px 1fr auto auto auto;
   gap: 12px;
   align-items: center;
   padding: 10px 12px;
   background: rgba(255, 255, 255, 0.04);
   border-radius: 10px;
-  transition: background 0.2s ease;
+  transition: all 0.2s ease;
+  border-left: 3px solid transparent;
 }
 
 .timezone-item:hover {
   background: rgba(255, 255, 255, 0.08);
 }
+
+.timezone-item.tz-recent { border-left-color: #22c55e; }
+.timezone-item.tz-today { border-left-color: #38bdf8; }
+.timezone-item.tz-week { border-left-color: #f59e0b; }
+.timezone-item.tz-old { border-left-color: #64748b; }
 
 .tz-flag {
   font-size: 1.4rem;
@@ -512,9 +621,29 @@ tr:hover td {
   font-weight: 500;
 }
 
+.tz-subregions {
+  font-size: 0.8rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tz-time {
+  font-size: 0.85rem;
+  color: var(--accent-secondary);
+  min-width: 70px;
+}
+
+.timezone-item.tz-recent .tz-time { color: #22c55e; }
+.timezone-item.tz-today .tz-time { color: #38bdf8; }
+.timezone-item.tz-week .tz-time { color: #f59e0b; }
+
 .tz-count {
   font-weight: 600;
   color: var(--accent);
+  min-width: 45px;
+  text-align: right;
 }
 
 .tz-pct {
@@ -522,6 +651,16 @@ tr:hover td {
   color: var(--muted);
   min-width: 50px;
   text-align: right;
+}
+
+@media (max-width: 768px) {
+  .timezone-item {
+    grid-template-columns: 28px 1fr auto auto;
+  }
+  .tz-subregions,
+  .tz-time {
+    display: none;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
