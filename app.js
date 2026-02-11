@@ -17,6 +17,7 @@ const state = {
     customEnd: "",
   },
   isLoading: false,
+  timezoneGeoJSON: null,
 };
 
 const CACHE_KEY = "controlpanel-cache-v6";
@@ -86,6 +87,9 @@ function initApp() {
   requestNotificationPermission();
   document.getElementById("refresh-btn").addEventListener("click", () => refreshData(true));
 
+  // Load timezone GeoJSON for map rendering
+  loadTimezoneGeoJSON();
+
   const cached = loadCache();
   if (cached) {
     state.data = cached.data;
@@ -97,6 +101,21 @@ function initApp() {
 
   refreshData(false);
   state.pollInterval = setInterval(() => refreshData(false), CONFIG.pollMs);
+}
+
+async function loadTimezoneGeoJSON() {
+  try {
+    const response = await fetch("assets/timezones.geojson");
+    if (response.ok) {
+      state.timezoneGeoJSON = await response.json();
+      // Re-render if already has data
+      if (state.data.length > 0) {
+        renderCurrentView();
+      }
+    }
+  } catch (error) {
+    console.warn("Failed to load timezone GeoJSON:", error);
+  }
 }
 
 function cleanup() {
@@ -640,6 +659,7 @@ function renderOverview() {
   });
 
   renderOverviewChart();
+  renderOverviewTimezoneMap(state.data);
   renderOverviewDevices();
   renderOverviewBrowsers();
   renderOverviewReturning();
@@ -968,42 +988,6 @@ function getHeatmapColor(intensity) {
 // TIMEZONE MAP
 // ═══════════════════════════════════════════════════════════════════════════
 
-// World map SVG paths for major regions
-const WORLD_MAP_REGIONS = {
-  "Brasil": {
-    path: "M280,180 L320,175 L340,190 L350,220 L340,260 L310,280 L280,270 L260,240 L265,200 Z",
-    center: [300, 225]
-  },
-  "America do Sul": {
-    path: "M250,270 L280,270 L310,280 L300,320 L270,340 L250,310 Z",
-    center: [275, 300]
-  },
-  "America do Norte": {
-    path: "M150,80 L250,70 L280,100 L260,140 L200,150 L150,130 Z",
-    center: [210, 110]
-  },
-  "EUA": {
-    path: "M120,100 L220,95 L240,120 L220,145 L150,150 L110,130 Z",
-    center: [170, 120]
-  },
-  "Europa": {
-    path: "M420,80 L480,75 L500,95 L490,130 L450,140 L410,120 Z",
-    center: [455, 105]
-  },
-  "Asia": {
-    path: "M520,80 L620,70 L680,100 L670,160 L600,180 L530,150 L510,110 Z",
-    center: [590, 120]
-  },
-  "Oceania": {
-    path: "M620,220 L680,210 L710,240 L690,280 L640,285 L610,260 Z",
-    center: [660, 250]
-  },
-  "Outros": {
-    path: "M380,180 L420,175 L440,200 L430,230 L400,240 L375,220 Z",
-    center: [405, 205]
-  }
-};
-
 function getRecencyClass(lastAccess) {
   if (!lastAccess) return "tz-old";
   const now = new Date();
@@ -1032,9 +1016,56 @@ function formatRelativeTime(date) {
   return date.toLocaleDateString("pt-BR");
 }
 
-function renderTimezoneMap(records) {
-  const mapContainer = document.getElementById("timezone-map");
-  const listContainer = document.getElementById("timezone-list");
+// Get UTC offset from IANA timezone
+function getUtcOffset(timezone) {
+  if (!timezone) return null;
+  try {
+    const now = new Date();
+    const utcDate = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' }));
+    const tzDate = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
+    return (tzDate - utcDate) / (1000 * 60 * 60);
+  } catch {
+    return null;
+  }
+}
+
+// Simple map projection (Equirectangular)
+function projectCoords(lon, lat, width, height) {
+  const x = ((lon + 180) / 360) * width;
+  const y = ((90 - lat) / 180) * height;
+  return [x, y];
+}
+
+// Convert GeoJSON coordinates to SVG path
+function coordsToPath(coords, width, height) {
+  if (!coords || coords.length === 0) return "";
+
+  const processRing = (ring) => {
+    return ring.map((point, i) => {
+      const [x, y] = projectCoords(point[0], point[1], width, height);
+      return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ') + ' Z';
+  };
+
+  // Handle different geometry types
+  if (typeof coords[0][0] === 'number') {
+    // Simple polygon ring
+    return processRing(coords);
+  } else if (typeof coords[0][0][0] === 'number') {
+    // Polygon with holes
+    return coords.map(ring => processRing(ring)).join(' ');
+  } else {
+    // MultiPolygon
+    return coords.map(polygon =>
+      polygon.map(ring => processRing(ring)).join(' ')
+    ).join(' ');
+  }
+}
+
+// Render timezone map using GeoJSON
+function renderTimezoneMap(records, containerId = "timezone-map", listContainerId = "timezone-list") {
+  const mapContainer = document.getElementById(containerId);
+  const listContainer = listContainerId ? document.getElementById(listContainerId) : null;
 
   if (!mapContainer) return;
 
@@ -1044,7 +1075,30 @@ function renderTimezoneMap(records) {
     return;
   }
 
-  // Group by region and find most recent access
+  // Group by UTC offset zone and find most recent access
+  const zoneData = new Map();
+  records.forEach((row) => {
+    const tz = row.timezone || "";
+    const offset = getUtcOffset(tz);
+    const zone = offset !== null ? Math.round(offset) : null;
+    const ts = row.ts ? new Date(row.ts) : null;
+
+    if (zone !== null) {
+      const current = zoneData.get(zone) || {
+        count: 0,
+        lastAccess: null,
+        timezones: new Set()
+      };
+      current.count++;
+      current.timezones.add(tz);
+      if (ts && (!current.lastAccess || ts > current.lastAccess)) {
+        current.lastAccess = ts;
+      }
+      zoneData.set(zone, current);
+    }
+  });
+
+  // Also group by region for the list
   const regionData = new Map();
   records.forEach((row) => {
     const tz = row.timezone || "";
@@ -1070,64 +1124,116 @@ function renderTimezoneMap(records) {
 
   // Render SVG world map
   const svgNS = "http://www.w3.org/2000/svg";
+  const width = 900;
+  const height = 400;
   const svg = document.createElementNS(svgNS, "svg");
-  svg.setAttribute("viewBox", "0 0 800 350");
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
   svg.setAttribute("class", "world-map-svg");
+  svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
 
   // Background
   const bg = document.createElementNS(svgNS, "rect");
-  bg.setAttribute("width", "800");
-  bg.setAttribute("height", "350");
+  bg.setAttribute("width", width);
+  bg.setAttribute("height", height);
   bg.setAttribute("fill", "rgba(255,255,255,0.02)");
   bg.setAttribute("rx", "12");
   svg.appendChild(bg);
 
-  // Draw regions
-  Object.entries(WORLD_MAP_REGIONS).forEach(([regionName, regionGeo]) => {
-    const data = regionData.get(regionName);
-    const recencyClass = data ? getRecencyClass(data.lastAccess) : "tz-inactive";
+  // Draw timezone regions from GeoJSON
+  if (state.timezoneGeoJSON && state.timezoneGeoJSON.features) {
+    state.timezoneGeoJSON.features.forEach((feature) => {
+      const props = feature.properties;
+      const zone = props.zone;
+      const geom = feature.geometry;
 
-    const group = document.createElementNS(svgNS, "g");
-    group.setAttribute("class", `map-region ${recencyClass}`);
-    group.setAttribute("data-region", regionName);
+      if (!geom) return;
 
-    // Region path
-    const path = document.createElementNS(svgNS, "path");
-    path.setAttribute("d", regionGeo.path);
-    path.setAttribute("class", "region-path");
-    group.appendChild(path);
+      const data = zoneData.get(Math.round(zone));
+      const recencyClass = data ? getRecencyClass(data.lastAccess) : "tz-inactive";
 
-    // Region label
-    const text = document.createElementNS(svgNS, "text");
-    text.setAttribute("x", regionGeo.center[0]);
-    text.setAttribute("y", regionGeo.center[1]);
-    text.setAttribute("class", "region-label");
-    text.textContent = regionName;
-    group.appendChild(text);
+      const group = document.createElementNS(svgNS, "g");
+      group.setAttribute("class", `map-region ${recencyClass}`);
+      group.setAttribute("data-zone", zone);
 
-    // Access info (if has data)
-    if (data) {
-      const infoText = document.createElementNS(svgNS, "text");
-      infoText.setAttribute("x", regionGeo.center[0]);
-      infoText.setAttribute("y", regionGeo.center[1] + 18);
-      infoText.setAttribute("class", "region-info");
-      infoText.textContent = formatRelativeTime(data.lastAccess);
-      group.appendChild(infoText);
+      // Convert geometry to path
+      let pathD = "";
+      if (geom.type === "Polygon") {
+        pathD = coordsToPath(geom.coordinates, width, height);
+      } else if (geom.type === "MultiPolygon") {
+        pathD = geom.coordinates.map(poly =>
+          coordsToPath(poly, width, height)
+        ).join(' ');
+      }
 
-      // Tooltip on hover
-      group.setAttribute("title", `${regionName}: ${data.count} visitas, ultimo ${formatRelativeTime(data.lastAccess)}`);
+      if (pathD) {
+        const path = document.createElementNS(svgNS, "path");
+        path.setAttribute("d", pathD);
+        path.setAttribute("class", "region-path");
+
+        // Tooltip
+        const utcLabel = props.utc_format || `UTC${zone >= 0 ? '+' : ''}${zone}`;
+        if (data) {
+          path.setAttribute("data-tooltip", `${utcLabel}: ${data.count} visitas, ${formatRelativeTime(data.lastAccess)}`);
+        } else {
+          path.setAttribute("data-tooltip", utcLabel);
+        }
+
+        group.appendChild(path);
+      }
+
+      svg.appendChild(group);
+    });
+  } else {
+    // Fallback: draw simple vertical timezone bands
+    for (let z = -12; z <= 12; z++) {
+      const data = zoneData.get(z);
+      const recencyClass = data ? getRecencyClass(data.lastAccess) : "tz-inactive";
+
+      const x = ((z + 12) / 24) * width;
+      const bandWidth = width / 24;
+
+      const rect = document.createElementNS(svgNS, "rect");
+      rect.setAttribute("x", x);
+      rect.setAttribute("y", 0);
+      rect.setAttribute("width", bandWidth);
+      rect.setAttribute("height", height);
+      rect.setAttribute("class", `region-path ${recencyClass}`);
+
+      if (data) {
+        rect.setAttribute("data-tooltip", `UTC${z >= 0 ? '+' : ''}${z}: ${data.count} visitas`);
+      }
+
+      svg.appendChild(rect);
+
+      // Zone label
+      if (z % 3 === 0) {
+        const text = document.createElementNS(svgNS, "text");
+        text.setAttribute("x", x + bandWidth / 2);
+        text.setAttribute("y", height - 10);
+        text.setAttribute("class", "zone-label");
+        text.textContent = `${z >= 0 ? '+' : ''}${z}`;
+        svg.appendChild(text);
+      }
     }
-
-    svg.appendChild(group);
-  });
+  }
 
   mapContainer.innerHTML = "";
   mapContainer.appendChild(svg);
 
+  // Add tooltip handler
+  svg.addEventListener("mousemove", (e) => {
+    const target = e.target.closest("[data-tooltip]");
+    if (target) {
+      showMapTooltip(e, target.getAttribute("data-tooltip"));
+    } else {
+      hideMapTooltip();
+    }
+  });
+  svg.addEventListener("mouseleave", hideMapTooltip);
+
   // Render list below the map
   if (listContainer) {
     const sorted = Array.from(regionData.entries()).sort((a, b) => {
-      // Sort by most recent first
       if (!a[1].lastAccess && !b[1].lastAccess) return b[1].count - a[1].count;
       if (!a[1].lastAccess) return 1;
       if (!b[1].lastAccess) return -1;
@@ -1177,6 +1283,32 @@ function renderTimezoneMap(records) {
 
     listContainer.appendChild(list);
   }
+}
+
+// Map tooltip helpers
+let mapTooltipEl = null;
+
+function showMapTooltip(event, text) {
+  if (!mapTooltipEl) {
+    mapTooltipEl = document.createElement("div");
+    mapTooltipEl.className = "map-tooltip";
+    document.body.appendChild(mapTooltipEl);
+  }
+  mapTooltipEl.textContent = text;
+  mapTooltipEl.style.display = "block";
+  mapTooltipEl.style.left = (event.pageX + 10) + "px";
+  mapTooltipEl.style.top = (event.pageY + 10) + "px";
+}
+
+function hideMapTooltip() {
+  if (mapTooltipEl) {
+    mapTooltipEl.style.display = "none";
+  }
+}
+
+// Render overview timezone map (all sites combined)
+function renderOverviewTimezoneMap(records) {
+  renderTimezoneMap(records, "overview-timezone-map", null);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

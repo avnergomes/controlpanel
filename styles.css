@@ -663,6 +663,29 @@ tr:hover td {
   }
 }
 
+/* Map Tooltip */
+.map-tooltip {
+  position: absolute;
+  display: none;
+  background: rgba(26, 32, 39, 0.95);
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  pointer-events: none;
+  z-index: 1000;
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  max-width: 250px;
+}
+
+/* Zone labels on fallback map */
+.zone-label {
+  fill: var(--muted);
+  font-size: 10px;
+  text-anchor: middle;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    EMPTY & LOADING STATES
    ═══════════════════════════════════════════════════════════════════════════ */
