@@ -1173,7 +1173,9 @@ function renderTimezoneMap(records, containerId = "timezone-map", listContainerI
         // Tooltip
         const utcLabel = props.utc_format || `UTC${zone >= 0 ? '+' : ''}${zone}`;
         if (data) {
-          path.setAttribute("data-tooltip", `${utcLabel}: ${data.count} visitas, ${formatRelativeTime(data.lastAccess)}`);
+          const tzList = Array.from(data.timezones).slice(0, 3).join(", ");
+          const tzMore = data.timezones.size > 3 ? ` +${data.timezones.size - 3}` : "";
+          path.setAttribute("data-tooltip", `${utcLabel}\n${tzList}${tzMore}\n${data.count} visitas, ${formatRelativeTime(data.lastAccess)}`);
         } else {
           path.setAttribute("data-tooltip", utcLabel);
         }
@@ -1200,7 +1202,9 @@ function renderTimezoneMap(records, containerId = "timezone-map", listContainerI
       rect.setAttribute("class", `region-path ${recencyClass}`);
 
       if (data) {
-        rect.setAttribute("data-tooltip", `UTC${z >= 0 ? '+' : ''}${z}: ${data.count} visitas`);
+        const tzList = Array.from(data.timezones).slice(0, 3).join(", ");
+        const tzMore = data.timezones.size > 3 ? ` +${data.timezones.size - 3}` : "";
+        rect.setAttribute("data-tooltip", `UTC${z >= 0 ? '+' : ''}${z}\n${tzList}${tzMore}\n${data.count} visitas, ${formatRelativeTime(data.lastAccess)}`);
       }
 
       svg.appendChild(rect);
