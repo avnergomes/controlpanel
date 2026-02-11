@@ -18,6 +18,7 @@ const state = {
   },
   isLoading: false,
   timezoneGeoJSON: null,
+  countriesGeoJSON: null,
 };
 
 const CACHE_KEY = "controlpanel-cache-v6";
@@ -105,16 +106,25 @@ function initApp() {
 
 async function loadTimezoneGeoJSON() {
   try {
-    const response = await fetch("assets/timezones.geojson");
-    if (response.ok) {
-      state.timezoneGeoJSON = await response.json();
-      // Re-render if already has data
-      if (state.data.length > 0) {
-        renderCurrentView();
-      }
+    // Load both GeoJSON files in parallel
+    const [tzResponse, countriesResponse] = await Promise.all([
+      fetch("assets/timezones.geojson"),
+      fetch("assets/countries.geojson")
+    ]);
+
+    if (tzResponse.ok) {
+      state.timezoneGeoJSON = await tzResponse.json();
+    }
+    if (countriesResponse.ok) {
+      state.countriesGeoJSON = await countriesResponse.json();
+    }
+
+    // Re-render if already has data
+    if (state.data.length > 0) {
+      renderCurrentView();
     }
   } catch (error) {
-    console.warn("Failed to load timezone GeoJSON:", error);
+    console.warn("Failed to load GeoJSON files:", error);
   }
 }
 
@@ -1138,6 +1148,35 @@ function renderTimezoneMap(records, containerId = "timezone-map", listContainerI
   bg.setAttribute("fill", "rgba(255,255,255,0.02)");
   bg.setAttribute("rx", "12");
   svg.appendChild(bg);
+
+  // Draw country outlines (background layer)
+  if (state.countriesGeoJSON && state.countriesGeoJSON.features) {
+    const countriesGroup = document.createElementNS(svgNS, "g");
+    countriesGroup.setAttribute("class", "countries-layer");
+
+    state.countriesGeoJSON.features.forEach((feature) => {
+      const geom = feature.geometry;
+      if (!geom) return;
+
+      let pathD = "";
+      if (geom.type === "Polygon") {
+        pathD = coordsToPath(geom.coordinates, width, height);
+      } else if (geom.type === "MultiPolygon") {
+        pathD = geom.coordinates.map(poly =>
+          coordsToPath(poly, width, height)
+        ).join(' ');
+      }
+
+      if (pathD) {
+        const path = document.createElementNS(svgNS, "path");
+        path.setAttribute("d", pathD);
+        path.setAttribute("class", "country-path");
+        countriesGroup.appendChild(path);
+      }
+    });
+
+    svg.appendChild(countriesGroup);
+  }
 
   // Draw timezone regions from GeoJSON
   if (state.timezoneGeoJSON && state.timezoneGeoJSON.features) {

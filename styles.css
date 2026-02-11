@@ -688,6 +688,17 @@ tr:hover td {
   text-anchor: middle;
 }
 
+/* Country outlines (background layer) */
+.countries-layer {
+  pointer-events: none;
+}
+
+.country-path {
+  fill: rgba(255, 255, 255, 0.03);
+  stroke: rgba(255, 255, 255, 0.15);
+  stroke-width: 0.5;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    EMPTY & LOADING STATES
    ═══════════════════════════════════════════════════════════════════════════ */
