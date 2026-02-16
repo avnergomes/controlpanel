@@ -87,6 +87,7 @@ async function initApp() {
   document.body.classList.add("loaded");
   bindNavigation();
   bindControls();
+  initSortableTables();
   requestNotificationPermission();
   document.getElementById("refresh-btn").addEventListener("click", () => refreshData(true));
 
@@ -216,7 +217,51 @@ window.addEventListener("beforeunload", cleanup);
 
 function bindNavigation() {
   window.addEventListener("hashchange", renderCurrentView);
+
+  // Sidebar navigation links
+  document.querySelectorAll(".sidebar-link").forEach((link) => {
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      const route = link.dataset.route;
+      location.hash = `#/${route}`;
+      closeSidebar();
+    });
+  });
+
+  // Mobile sidebar toggle
+  const toggle = document.getElementById("sidebar-toggle");
+  const overlay = document.getElementById("sidebar-overlay");
+
+  if (toggle) {
+    toggle.addEventListener("click", toggleSidebar);
+  }
+  if (overlay) {
+    overlay.addEventListener("click", closeSidebar);
+  }
+
   renderCurrentView();
+}
+
+function toggleSidebar() {
+  const sidebar = document.querySelector(".sidebar");
+  const overlay = document.getElementById("sidebar-overlay");
+  const toggle = document.getElementById("sidebar-toggle");
+
+  if (sidebar) {
+    sidebar.classList.toggle("open");
+    overlay?.classList.toggle("show");
+    toggle?.setAttribute("aria-expanded", sidebar.classList.contains("open"));
+  }
+}
+
+function closeSidebar() {
+  const sidebar = document.querySelector(".sidebar");
+  const overlay = document.getElementById("sidebar-overlay");
+  const toggle = document.getElementById("sidebar-toggle");
+
+  sidebar?.classList.remove("open");
+  overlay?.classList.remove("show");
+  toggle?.setAttribute("aria-expanded", "false");
 }
 
 function bindControls() {
@@ -267,7 +312,15 @@ function renderCurrentView() {
   viewOverview.classList.toggle("active", isOverview);
   viewSite.classList.toggle("active", !isOverview);
 
+  // Update legacy nav-link active state
   document.querySelectorAll(".nav-link").forEach((link) => {
+    const isActive = link.dataset.route === route || (isOverview && link.dataset.route === "overview");
+    link.classList.toggle("active", isActive);
+    link.setAttribute("aria-current", isActive ? "page" : "false");
+  });
+
+  // Update sidebar-link active state
+  document.querySelectorAll(".sidebar-link").forEach((link) => {
     const isActive = link.dataset.route === route || (isOverview && link.dataset.route === "overview");
     link.classList.toggle("active", isActive);
     link.setAttribute("aria-current", isActive ? "page" : "false");
@@ -682,6 +735,10 @@ function renderEmptyState(container, message = "Nenhum dado disponivel para o pe
 // ═══════════════════════════════════════════════════════════════════════════
 
 function renderOverview() {
+  // Render insights bar and sidebar stats
+  renderInsights();
+  renderSidebarStats();
+
   const cards = document.getElementById("overview-cards");
   cards.innerHTML = "";
 
@@ -692,16 +749,10 @@ function renderOverview() {
 
   const totalVisits = state.data.length;
   const uniqueSessions = new Set(state.data.map((row) => row.sessionId).filter(Boolean)).size;
-  const lastBySite = CONFIG.sites.map((site) => {
-    const rows = state.bySite[site.key] || [];
-    const lastRow = rows.length ? rows[rows.length - 1] : null;
-    return {
-      key: site.key,
-      last: lastRow ? lastRow.ts : null,
-      timezone: lastRow ? lastRow.timezone : null,
-      count: rows.length,
-    };
-  });
+
+  // Calculate sparkline data and variations
+  const totalSparkline = getSparklineData(state.data);
+  const totalVariation = calculateVariation(state.data);
 
   // Mobile %
   const mobileCount = state.data.filter((r) => r.isMobile === true || r.deviceType === "Mobile").length;
@@ -714,25 +765,51 @@ function renderOverview() {
   // Top browser
   const browserCounts = aggregateCounts(state.data, (r) => r.browser || "Unknown");
   const topBrowser = browserCounts.length ? browserCounts[0][0] : "N/D";
+  const topBrowserPct = browserCounts.length && totalVisits > 0
+    ? ((browserCounts[0][1] / totalVisits) * 100).toFixed(0) + "%"
+    : "";
 
   // Returning rate
   const returningRate = computeReturningRate(state.data);
 
-  cards.appendChild(makeCard("Total de acessos", formatNumber(totalVisits), "total"));
-  cards.appendChild(makeCard("Sessoes unicas", formatNumber(uniqueSessions), "sessions"));
+  // Enhanced cards with sparklines and variations
+  cards.appendChild(makeCard("Total de acessos", formatNumber(totalVisits), "total", {
+    variation: totalVariation,
+    sparklineData: totalSparkline,
+    sparklineColor: "#2dd4bf",
+    footer: "ultimos 7 dias"
+  }));
+
+  cards.appendChild(makeCard("Sessoes unicas", formatNumber(uniqueSessions), "sessions", {
+    sparklineData: getSparklineData(state.data.filter((r) => r.sessionId)),
+    sparklineColor: "#ff7a18"
+  }));
+
   cards.appendChild(makeCard("Mobile %", mobilePct, "mobile"));
   cards.appendChild(makeCard("Tempo medio de carga", avgLoad, "load"));
-  cards.appendChild(makeCard("Top Browser", topBrowser, "browser"));
+  cards.appendChild(makeCard("Top Browser", topBrowser, "browser", {
+    footer: topBrowserPct ? `${topBrowserPct} dos acessos` : undefined
+  }));
   cards.appendChild(makeCard("Returning rate", returningRate, "returning"));
 
-  lastBySite.forEach((entry, index) => {
-    const site = CONFIG.sites.find((item) => item.key === entry.key);
-    const value = entry.last
-      ? `${formatDateTime(entry.last)}${entry.timezone ? ` (${entry.timezone})` : ""}`
+  // Site cards with individual sparklines and variations
+  CONFIG.sites.forEach((site, index) => {
+    const rows = state.bySite[site.key] || [];
+    const lastRow = rows.length ? rows[rows.length - 1] : null;
+    const siteSparkline = getSparklineData(rows);
+    const siteVariation = calculateVariation(rows);
+
+    const value = lastRow
+      ? formatDateTime(lastRow.ts)
       : "--";
-    const card = makeCard(`${site.name}`, value, "site");
+
+    const card = makeCard(site.name, formatNumber(rows.length), "site", {
+      variation: siteVariation,
+      sparklineData: siteSparkline,
+      sparklineColor: CHART_COLORS.sites[index],
+      footer: lastRow ? `Ultimo: ${value}` : undefined
+    });
     card.style.borderLeftColor = CHART_COLORS.sites[index];
-    card.dataset.count = entry.count;
     cards.appendChild(card);
   });
 
@@ -1864,18 +1941,137 @@ function normalizeReferrer(value) {
 // UI HELPERS
 // ═══════════════════════════════════════════════════════════════════════════
 
-function makeCard(title, value, type = "") {
+function makeCard(title, value, type = "", options = {}) {
   const card = document.createElement("div");
   card.className = "card";
   if (type) card.dataset.cardType = type;
+
   const h3 = document.createElement("h3");
   h3.textContent = title;
-  const div = document.createElement("div");
-  div.className = "value";
-  div.textContent = value;
   card.appendChild(h3);
-  card.appendChild(div);
+
+  // Value row with optional variation
+  const valueRow = document.createElement("div");
+  valueRow.className = "value-row";
+
+  const valueDiv = document.createElement("div");
+  valueDiv.className = "value";
+  valueDiv.textContent = value;
+  valueRow.appendChild(valueDiv);
+
+  // Add variation indicator if provided
+  if (options.variation !== undefined && options.variation !== null) {
+    const variationSpan = document.createElement("span");
+    const isUp = options.variation > 0;
+    const isNeutral = Math.abs(options.variation) < 1;
+    variationSpan.className = `variation ${isNeutral ? "neutral" : isUp ? "up" : "down"}`;
+    variationSpan.textContent = isNeutral ? "~" : `${isUp ? "↑" : "↓"}${Math.abs(options.variation).toFixed(0)}%`;
+    valueRow.appendChild(variationSpan);
+  }
+
+  card.appendChild(valueRow);
+
+  // Add sparkline if data provided
+  if (options.sparklineData && options.sparklineData.length > 1) {
+    const sparkWrap = document.createElement("div");
+    sparkWrap.className = "sparkline-wrap";
+    const canvas = document.createElement("canvas");
+    canvas.className = "sparkline";
+    sparkWrap.appendChild(canvas);
+    card.appendChild(sparkWrap);
+
+    // Draw sparkline after card is appended to DOM
+    requestAnimationFrame(() => {
+      drawSparkline(canvas, options.sparklineData, options.sparklineColor);
+    });
+  }
+
+  // Add footer text if provided
+  if (options.footer) {
+    const footer = document.createElement("div");
+    footer.className = "card-footer";
+    footer.textContent = options.footer;
+    card.appendChild(footer);
+  }
+
   return card;
+}
+
+function drawSparkline(canvas, data, color = "#2dd4bf") {
+  const ctx = canvas.getContext("2d");
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+
+  const width = rect.width;
+  const height = rect.height;
+  const padding = 2;
+
+  const max = Math.max(...data);
+  const min = Math.min(...data);
+  const range = max - min || 1;
+
+  const stepX = (width - padding * 2) / (data.length - 1);
+
+  ctx.beginPath();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  data.forEach((val, i) => {
+    const x = padding + i * stepX;
+    const y = height - padding - ((val - min) / range) * (height - padding * 2);
+    if (i === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
+  });
+
+  ctx.stroke();
+
+  // Fill gradient below line
+  ctx.lineTo(width - padding, height - padding);
+  ctx.lineTo(padding, height - padding);
+  ctx.closePath();
+
+  const gradient = ctx.createLinearGradient(0, 0, 0, height);
+  gradient.addColorStop(0, color.replace(")", ", 0.3)").replace("rgb", "rgba"));
+  gradient.addColorStop(1, color.replace(")", ", 0.05)").replace("rgb", "rgba"));
+  ctx.fillStyle = gradient;
+  ctx.fill();
+}
+
+function getSparklineData(records, days = 7) {
+  const now = new Date();
+  const data = [];
+
+  for (let i = days - 1; i >= 0; i--) {
+    const dayStart = new Date(now.getTime() - i * 86400000);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(dayStart.getTime() + 86400000);
+
+    const count = records.filter((r) => r.ts >= dayStart && r.ts < dayEnd).length;
+    data.push(count);
+  }
+
+  return data;
+}
+
+function calculateVariation(records, days = 7) {
+  const now = new Date();
+  const thisStart = new Date(now.getTime() - days * 86400000);
+  const lastStart = new Date(now.getTime() - days * 2 * 86400000);
+
+  const thisCount = records.filter((r) => r.ts >= thisStart).length;
+  const lastCount = records.filter((r) => r.ts >= lastStart && r.ts < thisStart).length;
+
+  if (lastCount === 0) return null;
+  return ((thisCount - lastCount) / lastCount) * 100;
 }
 
 function formatNumber(value) {
@@ -1991,6 +2187,287 @@ function notifyNewVisit(row) {
     body: `${siteName} — ${localTime} — ${tz}`,
     icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230f766e'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='system-ui' font-weight='700' font-size='16' fill='white'%3ECP%3C/text%3E%3C/svg%3E",
     tag: `visit-${row.siteKey}-${row.ts?.getTime() || Date.now()}`,
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TABLE SORTING
+// ═══════════════════════════════════════════════════════════════════════════
+
+function initSortableTables() {
+  document.querySelectorAll(".sortable-table").forEach((table) => {
+    const headers = table.querySelectorAll("th[data-sort]");
+    headers.forEach((header) => {
+      header.addEventListener("click", () => {
+        sortTable(table, header);
+      });
+    });
+  });
+}
+
+function sortTable(table, header) {
+  const tbody = table.querySelector("tbody");
+  const rows = Array.from(tbody.querySelectorAll("tr"));
+  const column = header.dataset.sort;
+  const type = header.dataset.type || "string";
+  const columnIndex = Array.from(header.parentElement.children).indexOf(header);
+
+  // Determine sort direction
+  const isAsc = header.classList.contains("sort-asc");
+  const direction = isAsc ? -1 : 1;
+
+  // Clear other sort indicators
+  table.querySelectorAll("th").forEach((th) => {
+    th.classList.remove("sort-asc", "sort-desc");
+  });
+
+  // Set current sort indicator
+  header.classList.add(isAsc ? "sort-desc" : "sort-asc");
+
+  // Sort rows
+  rows.sort((a, b) => {
+    const aCell = a.children[columnIndex];
+    const bCell = b.children[columnIndex];
+    let aVal = aCell?.textContent?.trim() || "";
+    let bVal = bCell?.textContent?.trim() || "";
+
+    if (type === "number") {
+      aVal = parseFloat(aVal.replace(/[^\d.-]/g, "")) || 0;
+      bVal = parseFloat(bVal.replace(/[^\d.-]/g, "")) || 0;
+      return (aVal - bVal) * direction;
+    }
+
+    if (type === "date") {
+      const aDate = parseDate(aVal);
+      const bDate = parseDate(bVal);
+      const aTime = aDate ? aDate.getTime() : 0;
+      const bTime = bDate ? bDate.getTime() : 0;
+      return (aTime - bTime) * direction;
+    }
+
+    return aVal.localeCompare(bVal, "pt-BR") * direction;
+  });
+
+  // Re-append sorted rows
+  rows.forEach((row) => tbody.appendChild(row));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SKELETON LOADING
+// ═══════════════════════════════════════════════════════════════════════════
+
+function showSkeletonCards(container, count = 6) {
+  container.innerHTML = "";
+  for (let i = 0; i < count; i++) {
+    const skeleton = document.createElement("div");
+    skeleton.className = "card skeleton skeleton-card";
+    skeleton.innerHTML = `
+      <div class="skeleton-line" style="width: 60%; height: 14px; margin-bottom: 12px;"></div>
+      <div class="skeleton-line" style="width: 40%; height: 28px;"></div>
+    `;
+    container.appendChild(skeleton);
+  }
+}
+
+function showSkeletonTable(tbody, rows = 5, cols = 7) {
+  tbody.innerHTML = "";
+  for (let i = 0; i < rows; i++) {
+    const tr = document.createElement("tr");
+    for (let j = 0; j < cols; j++) {
+      const td = document.createElement("td");
+      td.innerHTML = `<div class="skeleton skeleton-line" style="width: ${60 + Math.random() * 30}%; height: 16px;"></div>`;
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INSIGHTS GENERATION
+// ═══════════════════════════════════════════════════════════════════════════
+
+function generateInsights(data) {
+  const insights = [];
+  const now = new Date();
+  const oneWeekAgo = new Date(now.getTime() - 7 * 86400000);
+  const twoWeeksAgo = new Date(now.getTime() - 14 * 86400000);
+
+  // Filter data for this week and last week
+  const thisWeek = data.filter((r) => r.ts >= oneWeekAgo);
+  const lastWeek = data.filter((r) => r.ts >= twoWeeksAgo && r.ts < oneWeekAgo);
+
+  // 1. Total variation vs last week
+  if (lastWeek.length > 0) {
+    const variation = ((thisWeek.length - lastWeek.length) / lastWeek.length) * 100;
+    if (Math.abs(variation) >= 5) {
+      insights.push({
+        icon: variation > 0 ? "📈" : "📉",
+        text: `${variation > 0 ? "+" : ""}${variation.toFixed(0)}% de acessos vs semana passada`,
+        type: variation > 0 ? "positive" : "negative",
+      });
+    }
+  }
+
+  // 2. Site with highest growth
+  const siteGrowth = CONFIG.sites.map((site) => {
+    const thisWeekSite = thisWeek.filter((r) => r.siteKey === site.key).length;
+    const lastWeekSite = lastWeek.filter((r) => r.siteKey === site.key).length;
+    const growth = lastWeekSite > 0 ? ((thisWeekSite - lastWeekSite) / lastWeekSite) * 100 : 0;
+    return { site: site.name, growth, thisWeek: thisWeekSite };
+  }).filter((s) => s.thisWeek > 0);
+
+  const topGrowth = siteGrowth.sort((a, b) => b.growth - a.growth)[0];
+  if (topGrowth && topGrowth.growth > 10) {
+    insights.push({
+      icon: "🔥",
+      text: `${topGrowth.site}: +${topGrowth.growth.toFixed(0)}% esta semana`,
+      type: "positive",
+    });
+  }
+
+  // 3. Peak hour today
+  const today = data.filter((r) => {
+    const rowDate = new Date(r.ts);
+    return rowDate.toDateString() === now.toDateString();
+  });
+
+  if (today.length > 5) {
+    const hourCounts = {};
+    today.forEach((r) => {
+      const hour = r.ts.getHours();
+      hourCounts[hour] = (hourCounts[hour] || 0) + 1;
+    });
+    const peakHour = Object.entries(hourCounts).sort((a, b) => b[1] - a[1])[0];
+    if (peakHour && peakHour[1] >= 3) {
+      insights.push({
+        icon: "⏰",
+        text: `Pico hoje: ${peakHour[0]}h (${peakHour[1]} acessos)`,
+        type: "info",
+      });
+    }
+  }
+
+  // 4. Top browser dominance
+  const browserCounts = aggregateCounts(data, (r) => r.browser || "Unknown");
+  if (browserCounts.length > 0) {
+    const total = browserCounts.reduce((sum, [, count]) => sum + count, 0);
+    const topBrowser = browserCounts[0];
+    const pct = ((topBrowser[1] / total) * 100).toFixed(0);
+    if (pct >= 60) {
+      insights.push({
+        icon: "🏆",
+        text: `${topBrowser[0]} domina com ${pct}%`,
+        type: "info",
+      });
+    }
+  }
+
+  // 5. Mobile vs Desktop ratio
+  const mobileCount = data.filter((r) => r.deviceType === "Mobile").length;
+  const desktopCount = data.filter((r) => r.deviceType === "Desktop").length;
+  if (mobileCount > 0 && desktopCount > 0) {
+    const mobileRatio = mobileCount / (mobileCount + desktopCount);
+    if (mobileRatio > 0.6) {
+      insights.push({
+        icon: "📱",
+        text: `${(mobileRatio * 100).toFixed(0)}% acessos via mobile`,
+        type: "info",
+      });
+    }
+  }
+
+  // 6. Most active timezone
+  const tzCounts = {};
+  data.forEach((r) => {
+    if (r.timezone) {
+      const region = TIMEZONE_REGIONS[r.timezone]?.region || "Outros";
+      tzCounts[region] = (tzCounts[region] || 0) + 1;
+    }
+  });
+  const topTz = Object.entries(tzCounts).sort((a, b) => b[1] - a[1])[0];
+  if (topTz && topTz[0] !== "Outros") {
+    const pct = ((topTz[1] / data.length) * 100).toFixed(0);
+    insights.push({
+      icon: "🌍",
+      text: `${topTz[0]}: ${pct}% dos acessos`,
+      type: "info",
+    });
+  }
+
+  // Limit to 4 insights for display
+  return insights.slice(0, 4);
+}
+
+function renderInsights() {
+  const container = document.getElementById("insights-list");
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  if (state.data.length === 0) {
+    return;
+  }
+
+  const insights = generateInsights(state.data);
+
+  if (insights.length === 0) {
+    // Show default insight
+    const insight = document.createElement("div");
+    insight.className = "insight insight--info";
+    insight.innerHTML = `
+      <span class="insight-icon">📊</span>
+      <span class="insight-text">Monitorando <strong>${formatNumber(state.data.length)}</strong> acessos em <strong>${CONFIG.sites.length}</strong> sites</span>
+    `;
+    container.appendChild(insight);
+    return;
+  }
+
+  insights.forEach((item, index) => {
+    const insight = document.createElement("div");
+    insight.className = `insight insight--${item.type}`;
+    insight.style.animationDelay = `${index * 0.1}s`;
+    insight.innerHTML = `
+      <span class="insight-icon">${item.icon}</span>
+      <span class="insight-text">${item.text}</span>
+    `;
+    container.appendChild(insight);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SIDEBAR STATS
+// ═══════════════════════════════════════════════════════════════════════════
+
+function renderSidebarStats() {
+  // Overview total
+  const overviewStat = document.getElementById("stat-overview");
+  if (overviewStat) {
+    overviewStat.textContent = formatNumber(state.data.length);
+  }
+
+  const now = new Date();
+  const oneWeekAgo = new Date(now.getTime() - 7 * 86400000);
+  const twoWeeksAgo = new Date(now.getTime() - 14 * 86400000);
+
+  // Stats per site
+  CONFIG.sites.forEach((site) => {
+    const statEl = document.getElementById(`stat-${site.key}`);
+    if (!statEl) return;
+
+    const rows = state.bySite[site.key] || [];
+    const thisWeek = rows.filter((r) => r.ts >= oneWeekAgo).length;
+    const lastWeek = rows.filter((r) => r.ts >= twoWeeksAgo && r.ts < oneWeekAgo).length;
+
+    let trendHtml = "";
+    if (lastWeek > 0) {
+      const variation = ((thisWeek - lastWeek) / lastWeek) * 100;
+      if (Math.abs(variation) >= 1) {
+        const isUp = variation > 0;
+        trendHtml = `<span class="trend ${isUp ? "up" : "down"}">${isUp ? "↑" : "↓"}${Math.abs(variation).toFixed(0)}%</span>`;
+      }
+    }
+
+    statEl.innerHTML = `${formatNumber(rows.length)}${trendHtml}`;
   });
 }
 

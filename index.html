@@ -52,20 +52,73 @@
     </div>
   </header>
 
-  <nav class="site-nav" role="navigation" aria-label="Navegacao principal">
-    <a href="#/overview" data-route="overview" class="nav-link" aria-current="page">Visao geral</a>
-    <a href="#/datageoparana" data-route="datageoparana" class="nav-link">Datageo Parana</a>
-    <a href="#/portfolio" data-route="portfolio" class="nav-link">Portfolio</a>
-    <a href="#/vbp-parana" data-route="vbp-parana" class="nav-link">VBP Parana</a>
-    <a href="#/precos-florestais" data-route="precos-florestais" class="nav-link">Precos Florestais</a>
-    <a href="#/precos-terras" data-route="precos-terras" class="nav-link">Precos de Terras</a>
-    <a href="#/precos-diarios" data-route="precos-diarios" class="nav-link">Precos Diarios</a>
-    <a href="#/comexstat-parana" data-route="comexstat-parana" class="nav-link">ComexStat Parana</a>
-    <a href="#/emprego-agro-parana" data-route="emprego-agro-parana" class="nav-link">Emprego Agro</a>
-    <a href="#/censo-parana" data-route="censo-parana" class="nav-link">Censo Parana</a>
-  </nav>
+  <!-- Insights Bar -->
+  <section id="insights-bar" class="insights-bar" aria-label="Destaques">
+    <div class="insights-scroll">
+      <div id="insights-list" class="insights-list">
+        <!-- Dynamically populated -->
+      </div>
+    </div>
+  </section>
 
-  <main class="content">
+  <div class="app-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" role="navigation" aria-label="Navegacao principal">
+      <a href="#/overview" data-route="overview" class="sidebar-link active" aria-current="page">
+        <span class="sidebar-icon">📊</span>
+        <span class="sidebar-label">Visao Geral</span>
+        <span class="sidebar-stat" id="stat-overview"></span>
+      </a>
+      <div class="sidebar-divider"></div>
+      <a href="#/datageoparana" data-route="datageoparana" class="sidebar-link">
+        <span class="sidebar-dot" style="--dot-color: #10b981"></span>
+        <span class="sidebar-label">Datageo Parana</span>
+        <span class="sidebar-stat" id="stat-datageoparana"></span>
+      </a>
+      <a href="#/portfolio" data-route="portfolio" class="sidebar-link">
+        <span class="sidebar-dot" style="--dot-color: #f59e0b"></span>
+        <span class="sidebar-label">Portfolio</span>
+        <span class="sidebar-stat" id="stat-portfolio"></span>
+      </a>
+      <a href="#/vbp-parana" data-route="vbp-parana" class="sidebar-link">
+        <span class="sidebar-dot" style="--dot-color: #3b82f6"></span>
+        <span class="sidebar-label">VBP Parana</span>
+        <span class="sidebar-stat" id="stat-vbp-parana"></span>
+      </a>
+      <a href="#/precos-florestais" data-route="precos-florestais" class="sidebar-link">
+        <span class="sidebar-dot" style="--dot-color: #22c55e"></span>
+        <span class="sidebar-label">Precos Florestais</span>
+        <span class="sidebar-stat" id="stat-precos-florestais"></span>
+      </a>
+      <a href="#/precos-terras" data-route="precos-terras" class="sidebar-link">
+        <span class="sidebar-dot" style="--dot-color: #a855f7"></span>
+        <span class="sidebar-label">Precos de Terras</span>
+        <span class="sidebar-stat" id="stat-precos-terras"></span>
+      </a>
+      <a href="#/precos-diarios" data-route="precos-diarios" class="sidebar-link">
+        <span class="sidebar-dot" style="--dot-color: #ef4444"></span>
+        <span class="sidebar-label">Precos Diarios</span>
+        <span class="sidebar-stat" id="stat-precos-diarios"></span>
+      </a>
+      <a href="#/comexstat-parana" data-route="comexstat-parana" class="sidebar-link">
+        <span class="sidebar-dot" style="--dot-color: #06b6d4"></span>
+        <span class="sidebar-label">ComexStat Parana</span>
+        <span class="sidebar-stat" id="stat-comexstat-parana"></span>
+      </a>
+      <a href="#/emprego-agro-parana" data-route="emprego-agro-parana" class="sidebar-link">
+        <span class="sidebar-dot" style="--dot-color: #ec4899"></span>
+        <span class="sidebar-label">Emprego Agro</span>
+        <span class="sidebar-stat" id="stat-emprego-agro-parana"></span>
+      </a>
+      <a href="#/censo-parana" data-route="censo-parana" class="sidebar-link">
+        <span class="sidebar-dot" style="--dot-color: #8b5cf6"></span>
+        <span class="sidebar-label">Censo Parana</span>
+        <span class="sidebar-stat" id="stat-censo-parana"></span>
+      </a>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="content">
     <section id="view-overview" data-view="overview" class="view active">
       <div class="card-grid" id="overview-cards"></div>
 
@@ -130,24 +183,33 @@
 
       <div class="grid-2">
         <div class="panel">
-          <h3>Heatmap de atividade</h3>
-          <p class="panel-desc">Distribuicao de visitas por hora e dia da semana.</p>
+          <div class="panel-head">
+            <div>
+              <h3>Heatmap de atividade</h3>
+              <p class="panel-desc">Distribuicao de visitas por hora e dia da semana.</p>
+            </div>
+            <div class="heatmap-legend">
+              <span class="heatmap-legend-label">Baixo</span>
+              <div class="heatmap-legend-gradient"></div>
+              <span class="heatmap-legend-label">Alto</span>
+            </div>
+          </div>
           <div id="heatmap-container" class="heatmap-container"></div>
         </div>
         <div class="panel">
           <h3>Comparativo de sites</h3>
           <p class="panel-desc">KPIs lado a lado de todos os sites.</p>
           <div class="table-wrap">
-            <table id="comparison-table">
+            <table id="comparison-table" class="sortable-table">
               <thead>
                 <tr>
-                  <th>Site</th>
-                  <th>Total</th>
-                  <th>Periodo</th>
-                  <th>Sessoes</th>
-                  <th>Mobile</th>
-                  <th>Load</th>
-                  <th>Ultimo</th>
+                  <th data-sort="name">Site <span class="sort-icon"></span></th>
+                  <th data-sort="total" data-type="number">Total <span class="sort-icon"></span></th>
+                  <th data-sort="period" data-type="number">Periodo <span class="sort-icon"></span></th>
+                  <th data-sort="sessions" data-type="number">Sessoes <span class="sort-icon"></span></th>
+                  <th data-sort="mobile" data-type="number">Mobile <span class="sort-icon"></span></th>
+                  <th data-sort="load" data-type="number">Load <span class="sort-icon"></span></th>
+                  <th data-sort="last" data-type="date">Ultimo <span class="sort-icon"></span></th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -413,7 +475,16 @@
         </div>
       </div>
     </section>
-  </main>
+    </main>
+  </div>
+
+  <!-- Sidebar Overlay (mobile) -->
+  <div id="sidebar-overlay" class="sidebar-overlay" aria-hidden="true"></div>
+
+  <!-- Sidebar Toggle (mobile) -->
+  <button id="sidebar-toggle" class="sidebar-toggle" aria-label="Abrir menu" aria-expanded="false">
+    ☰
+  </button>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 

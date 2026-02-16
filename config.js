@@ -260,24 +260,37 @@ const TIMEZONE_REGIONS = {
   "America/Mexico_City": { region: "America do Norte", subregion: "Mexico", flag: "🇲🇽" },
 };
 
-// Color palette for charts
+// Color palette for charts - distinct colors per site
 const CHART_COLORS = {
   sites: [
-    "#38bdf8", // Datageo Parana
-    "#22c55e", // Portfolio
-    "#a855f7", // VBP Parana
-    "#f59e0b", // Precos Florestais
-    "#ef4444", // Precos de Terras
-    "#14b8a6", // Precos Diarios
-    "#3b82f6", // ComexStat Parana
-    "#6366f1", // Emprego Agro Parana
-    "#8b5cf6", // Censo Parana
+    "#10b981", // Datageo Parana - Verde esmeralda
+    "#f59e0b", // Portfolio - Ambar
+    "#3b82f6", // VBP Parana - Azul
+    "#22c55e", // Precos Florestais - Verde
+    "#a855f7", // Precos de Terras - Roxo
+    "#ef4444", // Precos Diarios - Vermelho
+    "#06b6d4", // ComexStat Parana - Ciano
+    "#ec4899", // Emprego Agro Parana - Rosa
+    "#8b5cf6", // Censo Parana - Violeta
   ],
-  doughnut: ["#38bdf8", "#22c55e", "#a855f7", "#f59e0b", "#ef4444", "#14b8a6", "#ec4899", "#6366f1"],
+  doughnut: ["#10b981", "#f59e0b", "#3b82f6", "#a855f7", "#ef4444", "#06b6d4", "#ec4899", "#8b5cf6"],
   heatmap: {
     min: "rgba(45, 212, 191, 0.1)",
     max: "rgba(255, 122, 24, 0.9)",
   },
+};
+
+// Site color map for quick lookup
+const SITE_COLORS = {
+  "datageoparana": "#10b981",
+  "portfolio": "#f59e0b",
+  "vbp-parana": "#3b82f6",
+  "precos-florestais": "#22c55e",
+  "precos-terras": "#a855f7",
+  "precos-diarios": "#ef4444",
+  "comexstat-parana": "#06b6d4",
+  "emprego-agro-parana": "#ec4899",
+  "censo-parana": "#8b5cf6",
 };
 
 // Days of week in Portuguese
