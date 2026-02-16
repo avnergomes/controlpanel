@@ -13,6 +13,7 @@ const CONFIG = {
     { key: "precos-diarios", name: "Precos Diarios", kind: "precos" },
     { key: "comexstat-parana", name: "ComexStat Parana", kind: "comex" },
     { key: "emprego-agro-parana", name: "Emprego Agro Parana", kind: "emprego" },
+    { key: "censo-parana", name: "Censo Parana", kind: "censo" },
   ],
 };
 
@@ -184,6 +185,34 @@ const FIELD_SCHEMAS = {
     screenOrientation: ["screenOrientation", "Screen Orientation"],
     prefersColorScheme: ["prefersColorScheme", "Prefers Color Scheme", "colorScheme"],
   },
+  censo: {
+    timestamp: ["timestamp", "Timestamp"],
+    url: ["page", "URL", "url"],
+    path: ["pathname", "Pathname"],
+    referrer: ["referrer", "Referrer"],
+    timezone: ["timezone", "Timezone"],
+    sessionId: [],
+    userAgent: [],
+    os: [],
+    browser: [],
+    deviceType: ["deviceType", "Device Type", "Dispositivo"],
+    language: ["language", "Language"],
+    screenWidth: [],
+    screenHeight: [],
+    connectionType: ["connectionType", "Connection Type"],
+    loadTime: ["loadTime", "LoadTime", "Load Time"],
+    firstContentfulPaint: [],
+    domInteractiveTime: [],
+    isMobile: [],
+    utmSource: ["utmSource", "UTM Source"],
+    utmMedium: ["utmMedium", "UTM Medium"],
+    utmCampaign: ["utmCampaign", "UTM Campaign"],
+    utmTerm: ["utmTerm", "UTM Term"],
+    utmContent: ["utmContent", "UTM Content"],
+    pageTitle: ["pageTitle", "Page Title", "title", "Title"],
+    screenOrientation: ["screenOrientation", "Screen Orientation"],
+    prefersColorScheme: ["prefersColorScheme", "Prefers Color Scheme"],
+  },
 };
 
 // Returning visitor field variations
@@ -242,6 +271,7 @@ const CHART_COLORS = {
     "#14b8a6", // Precos Diarios
     "#3b82f6", // ComexStat Parana
     "#6366f1", // Emprego Agro Parana
+    "#8b5cf6", // Censo Parana
   ],
   doughnut: ["#38bdf8", "#22c55e", "#a855f7", "#f59e0b", "#ef4444", "#14b8a6", "#ec4899", "#6366f1"],
   heatmap: {
