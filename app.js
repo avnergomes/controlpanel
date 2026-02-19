@@ -2025,6 +2025,9 @@ function drawSparkline(canvas, data, color = "#2dd4bf") {
   const rect = canvas.getBoundingClientRect();
   const dpr = window.devicePixelRatio || 1;
 
+  // Skip if canvas has no size
+  if (rect.width === 0 || rect.height === 0) return;
+
   canvas.width = rect.width * dpr;
   canvas.height = rect.height * dpr;
   ctx.scale(dpr, dpr);
@@ -2062,23 +2065,57 @@ function drawSparkline(canvas, data, color = "#2dd4bf") {
   ctx.lineTo(padding, height - padding);
   ctx.closePath();
 
+  // Convert color to rgba for gradient
+  const rgbaColor = hexToRgba(color);
   const gradient = ctx.createLinearGradient(0, 0, 0, height);
-  gradient.addColorStop(0, color.replace(")", ", 0.3)").replace("rgb", "rgba"));
-  gradient.addColorStop(1, color.replace(")", ", 0.05)").replace("rgb", "rgba"));
+  gradient.addColorStop(0, rgbaColor(0.3));
+  gradient.addColorStop(1, rgbaColor(0.05));
   ctx.fillStyle = gradient;
   ctx.fill();
+}
+
+// Helper to convert hex to rgba function
+function hexToRgba(hex) {
+  // Handle both #RGB and #RRGGBB formats
+  let r, g, b;
+  if (hex.startsWith("#")) {
+    const h = hex.slice(1);
+    if (h.length === 3) {
+      r = parseInt(h[0] + h[0], 16);
+      g = parseInt(h[1] + h[1], 16);
+      b = parseInt(h[2] + h[2], 16);
+    } else {
+      r = parseInt(h.slice(0, 2), 16);
+      g = parseInt(h.slice(2, 4), 16);
+      b = parseInt(h.slice(4, 6), 16);
+    }
+  } else {
+    // Fallback for rgb() format
+    const match = hex.match(/\d+/g);
+    if (match) {
+      [r, g, b] = match.map(Number);
+    } else {
+      r = g = b = 128;
+    }
+  }
+  return (alpha) => `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 function getSparklineData(records, days = 7) {
   const now = new Date();
   const data = [];
 
+  // Filter valid records with valid timestamps
+  const validRecords = records.filter((r) =>
+    r.ts && r.ts instanceof Date && !isNaN(r.ts.getTime())
+  );
+
   for (let i = days - 1; i >= 0; i--) {
     const dayStart = new Date(now.getTime() - i * 86400000);
     dayStart.setHours(0, 0, 0, 0);
     const dayEnd = new Date(dayStart.getTime() + 86400000);
 
-    const count = records.filter((r) => r.ts >= dayStart && r.ts < dayEnd).length;
+    const count = validRecords.filter((r) => r.ts >= dayStart && r.ts < dayEnd).length;
     data.push(count);
   }
 
@@ -2090,8 +2127,13 @@ function calculateVariation(records, days = 7) {
   const thisStart = new Date(now.getTime() - days * 86400000);
   const lastStart = new Date(now.getTime() - days * 2 * 86400000);
 
-  const thisCount = records.filter((r) => r.ts >= thisStart).length;
-  const lastCount = records.filter((r) => r.ts >= lastStart && r.ts < thisStart).length;
+  // Filter valid records with valid timestamps
+  const validRecords = records.filter((r) =>
+    r.ts && r.ts instanceof Date && !isNaN(r.ts.getTime())
+  );
+
+  const thisCount = validRecords.filter((r) => r.ts >= thisStart).length;
+  const lastCount = validRecords.filter((r) => r.ts >= lastStart && r.ts < thisStart).length;
 
   if (lastCount === 0) return null;
   return ((thisCount - lastCount) / lastCount) * 100;
