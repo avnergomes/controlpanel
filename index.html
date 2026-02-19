@@ -3,14 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Security Headers -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' fonts.googleapis.com; font-src fonts.gstatic.com; connect-src 'self' script.google.com script.googleusercontent.com cdn.jsdelivr.net; img-src 'self' data:;">
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
   <meta name="referrer" content="strict-origin-when-cross-origin">
-  <title>Control Panel</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0a0f'/%3E%3Ccircle cx='32' cy='32' r='12' fill='%2322c55e'/%3E%3C/svg%3E">
+  <title>Control Panel - Traffic Dashboard</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231a2027'/%3E%3Cpath d='M14 42V22h12c6 0 10 4 10 10s-4 10-10 10H14zm8-6h4c2.8 0 4.6-1.8 4.6-4s-1.8-4-4.6-4h-4v8z' fill='%23ff7a18'/%3E%3Cpath d='M38 42V22h12c6 0 10 4 10 10s-4 10-10 10H38zm8-6h4c2.8 0 4.6-1.8 4.6-4s-1.8-4-4.6-4h-4v8z' fill='%232dd4bf'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -33,251 +34,461 @@
     </div>
   </div>
 
-  <div class="app">
-    <!-- Header Compacto -->
-    <header class="header">
-      <div class="header-brand">
-        <h1>Control Panel</h1>
+  <div class="bg-grid" aria-hidden="true"></div>
+  <header class="site-header">
+    <div class="brand">
+      <div class="badge">Traffic Control</div>
+      <h1>Control Panel</h1>
+      <p>Monitoramento de visitas — 9 sites, metricas de performance e distribuicoes.</p>
+    </div>
+    <div class="status-card">
+      <div class="status-line">Atualizado em: <span id="updated-at">--</span></div>
+      <div class="status-line">Status: <span id="status-text" class="status-ok">ok</span></div>
+      <div class="status-actions">
+        <button id="refresh-btn" class="btn">Atualizar</button>
+        <button class="btn btn-secondary" onclick="exportData('csv')" title="Exportar CSV">CSV</button>
+        <button class="btn btn-secondary" onclick="exportData('json')" title="Exportar JSON">JSON</button>
       </div>
-      <div class="header-actions">
-        <span class="header-status">
-          <span class="status-dot" id="status-dot"></span>
-          <time id="updated-at">--</time>
-        </span>
-        <button id="refresh-btn" class="btn-icon" title="Atualizar">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9v-3m-9-6a9 9 0 0 1 9-9m-9 9h3m6-9v3"/>
-          </svg>
-        </button>
-        <button class="btn-icon" onclick="exportData('csv')" title="Exportar CSV">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
-          </svg>
-        </button>
+    </div>
+  </header>
+
+  <!-- Insights Bar -->
+  <section id="insights-bar" class="insights-bar" aria-label="Destaques">
+    <div class="insights-scroll">
+      <div id="insights-list" class="insights-list">
+        <!-- Dynamically populated -->
       </div>
-    </header>
+    </div>
+  </section>
 
-    <!-- Navegacao por Tabs -->
-    <nav class="tabs" role="tablist">
-      <a href="#/overview" class="tab active" data-route="overview" role="tab" aria-selected="true">
-        <span class="tab-icon">📊</span>
-        <span class="tab-label">Visao Geral</span>
+  <div class="app-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" role="navigation" aria-label="Navegacao principal">
+      <a href="#/overview" data-route="overview" class="sidebar-link active" aria-current="page">
+        <span class="sidebar-icon">📊</span>
+        <span class="sidebar-label">Visao Geral</span>
+        <span class="sidebar-stat" id="stat-overview"></span>
       </a>
-      <div class="tab-divider"></div>
-      <a href="#/datageoparana" class="tab" data-route="datageoparana" role="tab">
-        <span class="tab-dot" style="--dot-color: #10b981"></span>
-        <span class="tab-label">Datageo</span>
+      <div class="sidebar-divider"></div>
+      <a href="#/datageoparana" data-route="datageoparana" class="sidebar-link">
+        <span class="sidebar-dot" style="--dot-color: #10b981"></span>
+        <span class="sidebar-label">Datageo Parana</span>
+        <span class="sidebar-stat" id="stat-datageoparana"></span>
       </a>
-      <a href="#/portfolio" class="tab" data-route="portfolio" role="tab">
-        <span class="tab-dot" style="--dot-color: #f59e0b"></span>
-        <span class="tab-label">Portfolio</span>
+      <a href="#/portfolio" data-route="portfolio" class="sidebar-link">
+        <span class="sidebar-dot" style="--dot-color: #f59e0b"></span>
+        <span class="sidebar-label">Portfolio</span>
+        <span class="sidebar-stat" id="stat-portfolio"></span>
       </a>
-      <a href="#/vbp-parana" class="tab" data-route="vbp-parana" role="tab">
-        <span class="tab-dot" style="--dot-color: #3b82f6"></span>
-        <span class="tab-label">VBP</span>
+      <a href="#/vbp-parana" data-route="vbp-parana" class="sidebar-link">
+        <span class="sidebar-dot" style="--dot-color: #3b82f6"></span>
+        <span class="sidebar-label">VBP Parana</span>
+        <span class="sidebar-stat" id="stat-vbp-parana"></span>
       </a>
-      <a href="#/precos-florestais" class="tab" data-route="precos-florestais" role="tab">
-        <span class="tab-dot" style="--dot-color: #22c55e"></span>
-        <span class="tab-label">Florestais</span>
+      <a href="#/precos-florestais" data-route="precos-florestais" class="sidebar-link">
+        <span class="sidebar-dot" style="--dot-color: #22c55e"></span>
+        <span class="sidebar-label">Precos Florestais</span>
+        <span class="sidebar-stat" id="stat-precos-florestais"></span>
       </a>
-      <a href="#/precos-terras" class="tab" data-route="precos-terras" role="tab">
-        <span class="tab-dot" style="--dot-color: #a855f7"></span>
-        <span class="tab-label">Terras</span>
+      <a href="#/precos-terras" data-route="precos-terras" class="sidebar-link">
+        <span class="sidebar-dot" style="--dot-color: #a855f7"></span>
+        <span class="sidebar-label">Precos de Terras</span>
+        <span class="sidebar-stat" id="stat-precos-terras"></span>
       </a>
-      <a href="#/precos-diarios" class="tab" data-route="precos-diarios" role="tab">
-        <span class="tab-dot" style="--dot-color: #ef4444"></span>
-        <span class="tab-label">Diarios</span>
+      <a href="#/precos-diarios" data-route="precos-diarios" class="sidebar-link">
+        <span class="sidebar-dot" style="--dot-color: #ef4444"></span>
+        <span class="sidebar-label">Precos Diarios</span>
+        <span class="sidebar-stat" id="stat-precos-diarios"></span>
       </a>
-      <a href="#/comexstat-parana" class="tab" data-route="comexstat-parana" role="tab">
-        <span class="tab-dot" style="--dot-color: #06b6d4"></span>
-        <span class="tab-label">ComexStat</span>
+      <a href="#/comexstat-parana" data-route="comexstat-parana" class="sidebar-link">
+        <span class="sidebar-dot" style="--dot-color: #06b6d4"></span>
+        <span class="sidebar-label">ComexStat Parana</span>
+        <span class="sidebar-stat" id="stat-comexstat-parana"></span>
       </a>
-      <a href="#/emprego-agro-parana" class="tab" data-route="emprego-agro-parana" role="tab">
-        <span class="tab-dot" style="--dot-color: #ec4899"></span>
-        <span class="tab-label">Emprego</span>
+      <a href="#/emprego-agro-parana" data-route="emprego-agro-parana" class="sidebar-link">
+        <span class="sidebar-dot" style="--dot-color: #ec4899"></span>
+        <span class="sidebar-label">Emprego Agro</span>
+        <span class="sidebar-stat" id="stat-emprego-agro-parana"></span>
       </a>
-      <a href="#/censo-parana" class="tab" data-route="censo-parana" role="tab">
-        <span class="tab-dot" style="--dot-color: #8b5cf6"></span>
-        <span class="tab-label">Censo</span>
+      <a href="#/censo-parana" data-route="censo-parana" class="sidebar-link">
+        <span class="sidebar-dot" style="--dot-color: #8b5cf6"></span>
+        <span class="sidebar-label">Censo Parana</span>
+        <span class="sidebar-stat" id="stat-censo-parana"></span>
       </a>
-    </nav>
+    </aside>
 
-    <!-- Conteudo Principal -->
-    <main class="main">
-      <!-- ═══════════════════════════════════════════════════════════════════
-           VIEW: VISAO GERAL (Lista de Paginas + Mini Timeseries)
-           ═══════════════════════════════════════════════════════════════════ -->
-      <section id="view-overview" class="view active">
-        <!-- Mini Timeseries -->
-        <div class="overview-chart-container">
-          <canvas id="overview-timeseries"></canvas>
-        </div>
+    <!-- Main Content -->
+    <main class="content">
+    <section id="view-overview" data-view="overview" class="view active">
+      <div class="card-grid" id="overview-cards"></div>
 
-        <!-- Barra de Filtros -->
-        <div class="filters">
-          <select id="filter-site" class="filter-select">
-            <option value="">Todos os sites</option>
-          </select>
-          <div class="filter-search-wrap">
-            <svg class="filter-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-            </svg>
-            <input type="search" id="filter-search" class="filter-search" placeholder="Buscar pagina...">
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Serie temporal combinada</h2>
+            <p>Todos os sites + total opcional.</p>
           </div>
-          <div class="filter-stats">
-            <span id="page-count">0</span> paginas
+          <div class="controls" data-scope="overview">
+            <label>
+              Granularidade
+              <select data-filter="granularity">
+                <option value="hour">Hora</option>
+                <option value="day" selected>Dia</option>
+                <option value="month">Mes</option>
+                <option value="year">Ano</option>
+              </select>
+            </label>
+            <label>
+              Periodo
+              <select data-filter="period">
+                <option value="all" selected>Desde o lancamento</option>
+                <option value="7d">Ultimos 7 dias</option>
+                <option value="30d">Ultimos 30 dias</option>
+                <option value="90d">Ultimos 90 dias</option>
+                <option value="custom">Custom</option>
+              </select>
+            </label>
+            <div class="custom-range" data-custom-range>
+              <label>
+                Inicio
+                <input type="date" data-filter="start">
+              </label>
+              <label>
+                Fim
+                <input type="date" data-filter="end">
+              </label>
+            </div>
           </div>
         </div>
-
-        <!-- Lista de Paginas -->
-        <div id="page-list" class="page-list">
-          <!-- Cards de pagina renderizados dinamicamente -->
+        <div class="chart-wrap">
+          <canvas id="overview-chart"></canvas>
         </div>
-      </section>
+      </div>
 
-      <!-- ═══════════════════════════════════════════════════════════════════
-           VIEW: SITE (Detalhamentos)
-           ═══════════════════════════════════════════════════════════════════ -->
-      <section id="view-site" class="view">
-        <div class="site-header">
-          <h2 id="site-name">Site</h2>
-          <p id="site-desc">Detalhes e distribuicoes.</p>
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Mapa Global de Acessos</h2>
+            <p>Ultimo acesso por fuso horario.</p>
+          </div>
+          <div class="tz-legend">
+            <span class="tz-legend-item"><span class="tz-dot tz-recent"></span> &lt;1h</span>
+            <span class="tz-legend-item"><span class="tz-dot tz-today"></span> Hoje</span>
+            <span class="tz-legend-item"><span class="tz-dot tz-week"></span> Esta semana</span>
+            <span class="tz-legend-item"><span class="tz-dot tz-old"></span> Mais antigo</span>
+          </div>
         </div>
+        <div id="overview-timezone-map" class="timezone-map-container"></div>
+      </div>
 
-        <div class="card-grid" id="site-kpis"></div>
-
+      <div class="grid-2">
         <div class="panel">
           <div class="panel-head">
             <div>
-              <h3>Serie temporal</h3>
-              <p class="panel-desc">Acessos ao longo do tempo.</p>
-            </div>
-            <div class="controls" data-scope="site">
-              <label>
-                <select data-filter="granularity">
-                  <option value="hour">Hora</option>
-                  <option value="day" selected>Dia</option>
-                  <option value="month">Mes</option>
-                </select>
-              </label>
-              <label>
-                <select data-filter="period">
-                  <option value="all" selected>Tudo</option>
-                  <option value="7d">7 dias</option>
-                  <option value="30d">30 dias</option>
-                  <option value="90d">90 dias</option>
-                </select>
-              </label>
-            </div>
-          </div>
-          <div class="chart-wrap">
-            <canvas id="site-chart"></canvas>
-          </div>
-        </div>
-
-        <div class="grid-2">
-          <div class="panel">
-            <div class="panel-head">
               <h3>Heatmap de atividade</h3>
-              <div class="heatmap-legend">
-                <span class="heatmap-legend-label">Baixo</span>
-                <div class="heatmap-legend-gradient"></div>
-                <span class="heatmap-legend-label">Alto</span>
-              </div>
+              <p class="panel-desc">Distribuicao de visitas por hora e dia da semana.</p>
             </div>
-            <div id="heatmap-container" class="heatmap-container"></div>
-          </div>
-          <div class="panel">
-            <div class="panel-head">
-              <div>
-                <h3>Mapa de Fusos</h3>
-              </div>
-              <div class="tz-legend">
-                <span class="tz-legend-item"><span class="tz-dot tz-recent"></span> &lt;1h</span>
-                <span class="tz-legend-item"><span class="tz-dot tz-today"></span> Hoje</span>
-                <span class="tz-legend-item"><span class="tz-dot tz-week"></span> Semana</span>
-                <span class="tz-legend-item"><span class="tz-dot tz-old"></span> Antigo</span>
-              </div>
+            <div class="heatmap-legend">
+              <span class="heatmap-legend-label">Baixo</span>
+              <div class="heatmap-legend-gradient"></div>
+              <span class="heatmap-legend-label">Alto</span>
             </div>
-            <div id="timezone-map" class="timezone-map-container"></div>
           </div>
+          <div id="heatmap-container" class="heatmap-container"></div>
         </div>
-
-        <div class="grid-3">
-          <div class="panel panel-small">
-            <h4>Timezones</h4>
-            <div class="chart-wrap small">
-              <canvas id="tz-chart"></canvas>
-            </div>
-          </div>
-          <div class="panel panel-small">
-            <h4>Referrers</h4>
-            <div class="chart-wrap small">
-              <canvas id="ref-chart"></canvas>
-            </div>
-          </div>
-          <div class="panel panel-small">
-            <h4>OS</h4>
-            <div class="chart-wrap small">
-              <canvas id="os-chart"></canvas>
-            </div>
-          </div>
-          <div class="panel panel-small">
-            <h4>Browser</h4>
-            <div class="chart-wrap small">
-              <canvas id="browser-chart"></canvas>
-            </div>
-          </div>
-          <div class="panel panel-small">
-            <h4>Dispositivo</h4>
-            <div class="chart-wrap small">
-              <canvas id="device-chart"></canvas>
-            </div>
-          </div>
-          <div class="panel panel-small">
-            <h4>Idioma</h4>
-            <div class="chart-wrap small">
-              <canvas id="lang-chart"></canvas>
-            </div>
-          </div>
-        </div>
-
         <div class="panel">
-          <div class="panel-head">
-            <h3>Ultimos acessos</h3>
-          </div>
+          <h3>Comparativo de sites</h3>
+          <p class="panel-desc">KPIs lado a lado de todos os sites.</p>
           <div class="table-wrap">
-            <table id="latest-table">
+            <table id="comparison-table" class="sortable-table">
               <thead>
                 <tr>
-                  <th>Data</th>
-                  <th>Pagina</th>
-                  <th>Timezone</th>
-                  <th>Browser</th>
-                  <th>Dispositivo</th>
+                  <th data-sort="name">Site <span class="sort-icon"></span></th>
+                  <th data-sort="total" data-type="number">Total <span class="sort-icon"></span></th>
+                  <th data-sort="period" data-type="number">Periodo <span class="sort-icon"></span></th>
+                  <th data-sort="sessions" data-type="number">Sessoes <span class="sort-icon"></span></th>
+                  <th data-sort="mobile" data-type="number">Mobile <span class="sort-icon"></span></th>
+                  <th data-sort="load" data-type="number">Load <span class="sort-icon"></span></th>
+                  <th data-sort="last" data-type="date">Ultimo <span class="sort-icon"></span></th>
                 </tr>
               </thead>
               <tbody></tbody>
             </table>
           </div>
         </div>
-      </section>
+      </div>
+
+      <div class="grid-3">
+        <div class="panel">
+          <h3>Dispositivos</h3>
+          <div class="chart-wrap small">
+            <canvas id="overview-devices-chart"></canvas>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Browsers</h3>
+          <div class="chart-wrap small">
+            <canvas id="overview-browsers-chart"></canvas>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Novos vs Retornantes</h3>
+          <div class="chart-wrap small">
+            <canvas id="overview-returning-chart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div class="panel">
+          <h3>UTM Source</h3>
+          <div class="chart-wrap small">
+            <canvas id="utm-source-chart"></canvas>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>UTM Medium</h3>
+          <div class="chart-wrap small">
+            <canvas id="utm-medium-chart"></canvas>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>UTM Campaign</h3>
+          <div class="chart-wrap small">
+            <canvas id="utm-campaign-chart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div class="panel">
+          <h3>Tipo de Conexao</h3>
+          <div class="chart-wrap small">
+            <canvas id="overview-connection-chart"></canvas>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Tema Preferido</h3>
+          <div class="chart-wrap small">
+            <canvas id="overview-theme-chart"></canvas>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Orientacao de Tela</h3>
+          <div class="chart-wrap small">
+            <canvas id="overview-orientation-chart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Top Paginas</h2>
+            <p>Paginas mais acessadas por titulo.</p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table id="top-pages">
+            <thead>
+              <tr>
+                <th>Titulo</th>
+                <th>Visitas</th>
+                <th>%</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Top periodos</h2>
+            <p>10 maiores picos por volume.</p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table id="top-periods">
+            <thead>
+              <tr>
+                <th>Periodo</th>
+                <th>Visitas</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-site" data-view="site" class="view">
+      <div class="site-title">
+        <h2 id="site-name">Site</h2>
+        <p id="site-desc">Serie e distribuicoes.</p>
+      </div>
+
+      <div class="card-grid" id="site-kpis"></div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Serie temporal do site</h2>
+            <p>Filtre periodo e granularidade.</p>
+          </div>
+          <div class="controls" data-scope="site">
+            <label>
+              Granularidade
+              <select data-filter="granularity">
+                <option value="hour">Hora</option>
+                <option value="day" selected>Dia</option>
+                <option value="month">Mes</option>
+                <option value="year">Ano</option>
+              </select>
+            </label>
+            <label>
+              Periodo
+              <select data-filter="period">
+                <option value="all" selected>Desde o lancamento</option>
+                <option value="7d">Ultimos 7 dias</option>
+                <option value="30d">Ultimos 30 dias</option>
+                <option value="90d">Ultimos 90 dias</option>
+                <option value="custom">Custom</option>
+              </select>
+            </label>
+            <div class="custom-range" data-custom-range>
+              <label>
+                Inicio
+                <input type="date" data-filter="start">
+              </label>
+              <label>
+                Fim
+                <input type="date" data-filter="end">
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="site-chart"></canvas>
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div class="panel">
+          <h3>Timezones</h3>
+          <div class="chart-wrap small">
+            <canvas id="tz-chart"></canvas>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Referrers</h3>
+          <div class="chart-wrap small">
+            <canvas id="ref-chart"></canvas>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>OS</h3>
+          <div class="chart-wrap small">
+            <canvas id="os-chart"></canvas>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Browser</h3>
+          <div class="chart-wrap small">
+            <canvas id="browser-chart"></canvas>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Dispositivo</h3>
+          <div class="chart-wrap small">
+            <canvas id="device-chart"></canvas>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Idioma</h3>
+          <div class="chart-wrap small">
+            <canvas id="lang-chart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Mapa de Fusos Horarios</h2>
+            <p>Ultimo acesso por regiao geografica.</p>
+          </div>
+          <div class="tz-legend">
+            <span class="tz-legend-item"><span class="tz-dot tz-recent"></span> &lt;1h</span>
+            <span class="tz-legend-item"><span class="tz-dot tz-today"></span> Hoje</span>
+            <span class="tz-legend-item"><span class="tz-dot tz-week"></span> Esta semana</span>
+            <span class="tz-legend-item"><span class="tz-dot tz-old"></span> Mais antigo</span>
+          </div>
+        </div>
+        <div id="timezone-map" class="timezone-map-container"></div>
+      </div>
+
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Regioes por timezone</h2>
+              <p>Distribuicao de visitas.</p>
+            </div>
+          </div>
+          <div id="timezone-list" class="timezone-list-container"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Performance</h2>
+              <p>Metricas medias de carregamento.</p>
+            </div>
+          </div>
+          <div class="card-grid" id="site-performance"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Ultimos acessos</h2>
+            <p>Registros mais recentes.</p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table id="latest-table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Path/URL</th>
+                <th>Referrer</th>
+                <th>Timezone</th>
+                <th>OS</th>
+                <th>Browser</th>
+                <th>Dispositivo</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
     </main>
   </div>
 
-  <!-- Painel de Detalhes (ao clicar em pagina) -->
-  <aside id="detail-panel" class="detail-panel hidden">
-    <button class="detail-close" onclick="closeDetail()" aria-label="Fechar">&times;</button>
-    <div id="detail-content"></div>
-  </aside>
+  <!-- Sidebar Overlay (mobile) -->
+  <div id="sidebar-overlay" class="sidebar-overlay" aria-hidden="true"></div>
 
-  <!-- Overlay para painel de detalhes -->
-  <div id="detail-overlay" class="detail-overlay hidden" onclick="closeDetail()"></div>
+  <!-- Sidebar Toggle (mobile) -->
+  <button id="sidebar-toggle" class="sidebar-toggle" aria-label="Abrir menu" aria-expanded="false">
+    ☰
+  </button>
 
-  <!-- Toast -->
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <!-- Loading -->
+  <!-- Loading Overlay -->
   <div id="loading-overlay" class="loading-overlay" aria-hidden="true">
     <div class="loading-spinner"></div>
   </div>

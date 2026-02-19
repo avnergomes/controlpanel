@@ -21,7 +21,7 @@ const state = {
   countriesGeoJSON: null,
 };
 
-const CACHE_KEY = "controlpanel-cache-v6";
+const CACHE_KEY = "controlpanel-cache-v7";
 const AUTH_SESSION_KEY = "controlpanel-session-token";
 const GEOJSON_CACHE_KEY = "controlpanel-geojson-v2"; // Bumped version to force refresh
 const GEOJSON_CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -218,43 +218,50 @@ window.addEventListener("beforeunload", cleanup);
 function bindNavigation() {
   window.addEventListener("hashchange", renderCurrentView);
 
-  // Tab navigation links
-  document.querySelectorAll(".tab").forEach((tab) => {
-    tab.addEventListener("click", (e) => {
+  // Sidebar navigation links
+  document.querySelectorAll(".sidebar-link").forEach((link) => {
+    link.addEventListener("click", (e) => {
       e.preventDefault();
-      const route = tab.dataset.route;
+      const route = link.dataset.route;
       location.hash = `#/${route}`;
+      closeSidebar();
     });
   });
 
-  // Populate site filter dropdown
-  const filterSite = document.getElementById("filter-site");
-  if (filterSite) {
-    CONFIG.sites.forEach((site) => {
-      const option = document.createElement("option");
-      option.value = site.key;
-      option.textContent = site.name;
-      filterSite.appendChild(option);
-    });
-    filterSite.addEventListener("change", renderPageList);
-  }
+  // Mobile sidebar toggle
+  const toggle = document.getElementById("sidebar-toggle");
+  const overlay = document.getElementById("sidebar-overlay");
 
-  // Search filter
-  const filterSearch = document.getElementById("filter-search");
-  if (filterSearch) {
-    filterSearch.addEventListener("input", debounce(renderPageList, 200));
+  if (toggle) {
+    toggle.addEventListener("click", toggleSidebar);
+  }
+  if (overlay) {
+    overlay.addEventListener("click", closeSidebar);
   }
 
   renderCurrentView();
 }
 
-// Debounce helper
-function debounce(fn, delay) {
-  let timeout;
-  return function(...args) {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => fn.apply(this, args), delay);
-  };
+function toggleSidebar() {
+  const sidebar = document.querySelector(".sidebar");
+  const overlay = document.getElementById("sidebar-overlay");
+  const toggle = document.getElementById("sidebar-toggle");
+
+  if (sidebar) {
+    sidebar.classList.toggle("open");
+    overlay?.classList.toggle("show");
+    toggle?.setAttribute("aria-expanded", sidebar.classList.contains("open"));
+  }
+}
+
+function closeSidebar() {
+  const sidebar = document.querySelector(".sidebar");
+  const overlay = document.getElementById("sidebar-overlay");
+  const toggle = document.getElementById("sidebar-toggle");
+
+  sidebar?.classList.remove("open");
+  overlay?.classList.remove("show");
+  toggle?.setAttribute("aria-expanded", "false");
 }
 
 function bindControls() {
@@ -305,11 +312,18 @@ function renderCurrentView() {
   viewOverview.classList.toggle("active", isOverview);
   viewSite.classList.toggle("active", !isOverview);
 
-  // Update tab active state
-  document.querySelectorAll(".tab").forEach((tab) => {
-    const isActive = tab.dataset.route === route || (isOverview && tab.dataset.route === "overview");
-    tab.classList.toggle("active", isActive);
-    tab.setAttribute("aria-selected", isActive ? "true" : "false");
+  // Update legacy nav-link active state
+  document.querySelectorAll(".nav-link").forEach((link) => {
+    const isActive = link.dataset.route === route || (isOverview && link.dataset.route === "overview");
+    link.classList.toggle("active", isActive);
+    link.setAttribute("aria-current", isActive ? "page" : "false");
+  });
+
+  // Update sidebar-link active state
+  document.querySelectorAll(".sidebar-link").forEach((link) => {
+    const isActive = link.dataset.route === route || (isOverview && link.dataset.route === "overview");
+    link.classList.toggle("active", isActive);
+    link.setAttribute("aria-current", isActive ? "page" : "false");
   });
 
   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -717,291 +731,15 @@ function renderEmptyState(container, message = "Nenhum dado disponivel para o pe
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// PAGE GROUPING & RENDERING (NEW - Extreme Makeover)
-// ═══════════════════════════════════════════════════════════════════════════
-
-function groupByPage(data) {
-  const pages = new Map();
-
-  data.forEach((record) => {
-    const path = record.path || record.url || "/";
-    const pageKey = `${record.siteKey}|${path}`;
-
-    if (!pages.has(pageKey)) {
-      pages.set(pageKey, {
-        siteKey: record.siteKey,
-        path: path,
-        pageTitle: record.pageTitle,
-        lastAccess: record,
-        totalAccesses: 0,
-        accessHistory: [],
-      });
-    }
-
-    const page = pages.get(pageKey);
-    page.totalAccesses++;
-
-    // Update if this access is more recent
-    if (record.ts > page.lastAccess.ts) {
-      page.lastAccess = record;
-    }
-
-    // Keep last 10 accesses for history
-    if (page.accessHistory.length < 10) {
-      page.accessHistory.push(record);
-    }
-  });
-
-  // Sort by last access (most recent first)
-  return Array.from(pages.values()).sort((a, b) => b.lastAccess.ts - a.lastAccess.ts);
-}
-
-function getRecencyClass(timestamp) {
-  const now = Date.now();
-  const diff = now - timestamp.getTime();
-  const hours = diff / (1000 * 60 * 60);
-
-  if (hours < 1) return "fresh";
-  if (hours < 24) return "recent";
-  if (hours < 168) return "stale"; // 7 days
-  return "old";
-}
-
-function renderPageList() {
-  const container = document.getElementById("page-list");
-  if (!container) return;
-
-  const filterSite = document.getElementById("filter-site")?.value || "";
-  const filterSearch = (document.getElementById("filter-search")?.value || "").toLowerCase();
-
-  // Filter data
-  let filtered = state.data;
-  if (filterSite) {
-    filtered = filtered.filter((r) => r.siteKey === filterSite);
-  }
-
-  // Group by page
-  const pages = groupByPage(filtered);
-
-  // Apply search
-  let results = pages;
-  if (filterSearch) {
-    results = pages.filter(
-      (p) =>
-        p.path.toLowerCase().includes(filterSearch) ||
-        p.pageTitle?.toLowerCase().includes(filterSearch) ||
-        p.siteKey.toLowerCase().includes(filterSearch)
-    );
-  }
-
-  // Update counter
-  const countEl = document.getElementById("page-count");
-  if (countEl) countEl.textContent = results.length;
-
-  // Render cards
-  if (results.length === 0) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-state-icon">📭</div>
-        <p>Nenhuma pagina encontrada</p>
-      </div>
-    `;
-    return;
-  }
-
-  container.innerHTML = results.map((page) => renderPageCard(page)).join("");
-}
-
-function renderPageCard(page) {
-  const last = page.lastAccess;
-  const recency = getRecencyClass(last.ts);
-  const timeAgo = formatRelativeTime(last.ts);
-  const region = TIMEZONE_REGIONS[last.timezone] || { flag: "🌍", region: last.timezone || "Unknown" };
-  const site = CONFIG.sites.find((s) => s.key === page.siteKey);
-  const siteColor = SITE_COLORS[page.siteKey] || "#71717a";
-
-  return `
-    <article class="page-card ${recency}" onclick="showDetail('${page.siteKey}', '${encodeURIComponent(page.path)}')">
-      <div class="recency-bar"></div>
-      <div class="page-info">
-        <div class="page-path">${escapeHtml(page.path || "/")}</div>
-        <div class="page-meta">
-          <span class="site-badge" style="--badge-color: ${siteColor}">${site?.name || page.siteKey}</span>
-          <span>${timeAgo}</span>
-          <span>${region.flag} ${region.region}</span>
-          <span>${last.browser || "?"} · ${last.deviceType || "?"}</span>
-        </div>
-      </div>
-      <div class="page-stats">
-        <div class="access-count">${page.totalAccesses}</div>
-        <div class="access-label">acessos</div>
-      </div>
-    </article>
-  `;
-}
-
-function escapeHtml(text) {
-  const div = document.createElement("div");
-  div.textContent = text;
-  return div.innerHTML;
-}
-
-function showDetail(siteKey, encodedPath) {
-  const path = decodeURIComponent(encodedPath);
-  const pageData = groupByPage(state.data.filter((r) => r.siteKey === siteKey)).find((p) => p.path === path);
-
-  if (!pageData) return;
-
-  const panel = document.getElementById("detail-panel");
-  const overlay = document.getElementById("detail-overlay");
-  const content = document.getElementById("detail-content");
-  const site = CONFIG.sites.find((s) => s.key === siteKey);
-
-  content.innerHTML = `
-    <h2>${escapeHtml(path || "/")}</h2>
-    <p class="detail-site">${site?.name || siteKey} · ${pageData.totalAccesses} acessos</p>
-
-    <section class="detail-section">
-      <h3>Ultimos Acessos</h3>
-      <ul class="access-history">
-        ${pageData.accessHistory
-          .sort((a, b) => b.ts - a.ts)
-          .slice(0, 10)
-          .map((a) => {
-            const region = TIMEZONE_REGIONS[a.timezone] || { flag: "🌍" };
-            return `
-            <li>
-              <div>
-                <time>${formatDateTime(a.ts)}</time>
-                <div style="color: var(--text-muted); font-size: 0.75rem;">
-                  ${region.flag} ${a.timezone || "Unknown"}
-                </div>
-              </div>
-              <div class="access-details">
-                ${a.browser || "?"} · ${a.deviceType || "?"}
-              </div>
-            </li>
-          `;
-          })
-          .join("")}
-      </ul>
-    </section>
-  `;
-
-  panel.classList.remove("hidden");
-  overlay.classList.remove("hidden");
-}
-
-function closeDetail() {
-  document.getElementById("detail-panel")?.classList.add("hidden");
-  document.getElementById("detail-overlay")?.classList.add("hidden");
-}
-
-// Expose to global scope
-window.showDetail = showDetail;
-window.closeDetail = closeDetail;
-
-// ═══════════════════════════════════════════════════════════════════════════
 // OVERVIEW RENDERING
 // ═══════════════════════════════════════════════════════════════════════════
 
 function renderOverview() {
-  // Render mini timeseries
-  renderOverviewTimeseries();
+  // Render insights bar and sidebar stats
+  renderInsights();
+  renderSidebarStats();
 
-  // Render page list
-  renderPageList();
-}
-
-function renderOverviewTimeseries() {
-  const canvas = document.getElementById("overview-timeseries");
-  if (!canvas) return;
-
-  destroyChart("overview-timeseries");
-
-  if (state.data.length === 0) return;
-
-  // Get last 14 days of data
-  const now = new Date();
-  const twoWeeksAgo = new Date(now.getTime() - 14 * 86400000);
-
-  const filtered = state.data.filter((r) => r.ts >= twoWeeksAgo);
-  const grouped = groupByDay(filtered);
-
-  const labels = [];
-  const values = [];
-
-  for (let i = 13; i >= 0; i--) {
-    const date = new Date(now.getTime() - i * 86400000);
-    const key = date.toISOString().slice(0, 10);
-    labels.push(date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }));
-    values.push(grouped[key] || 0);
-  }
-
-  state.charts["overview-timeseries"] = new Chart(canvas, {
-    type: "line",
-    data: {
-      labels,
-      datasets: [
-        {
-          data: values,
-          borderColor: "#2dd4bf",
-          backgroundColor: "rgba(45, 212, 191, 0.1)",
-          fill: true,
-          tension: 0.4,
-          pointRadius: 0,
-          pointHoverRadius: 4,
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          mode: "index",
-          intersect: false,
-          backgroundColor: "#18181f",
-          titleColor: "#e4e4e7",
-          bodyColor: "#71717a",
-          borderColor: "rgba(255,255,255,0.1)",
-          borderWidth: 1,
-        },
-      },
-      scales: {
-        x: {
-          display: true,
-          grid: { display: false },
-          ticks: { color: "#52525b", font: { size: 10 } },
-        },
-        y: {
-          display: false,
-          beginAtZero: true,
-        },
-      },
-      interaction: {
-        mode: "nearest",
-        axis: "x",
-        intersect: false,
-      },
-    },
-  });
-}
-
-function groupByDay(records) {
-  const grouped = {};
-  records.forEach((r) => {
-    const key = r.ts.toISOString().slice(0, 10);
-    grouped[key] = (grouped[key] || 0) + 1;
-  });
-  return grouped;
-}
-
-// Legacy function kept for compatibility but not used in new overview
-function renderOverviewLegacy() {
   const cards = document.getElementById("overview-cards");
-  if (!cards) return;
   cards.innerHTML = "";
 
   if (state.data.length === 0 && !state.isLoading) {
@@ -1336,68 +1074,85 @@ function renderHeatmap() {
   const container = document.getElementById("heatmap-container");
   if (!container) return;
 
-  const filtered = applyFilters(state.data, state.filters);
-  if (filtered.length === 0) {
-    container.innerHTML = '<div class="empty-state small"><p>Sem dados</p></div>';
-    return;
-  }
-
-  // Build 7x24 matrix (days x hours)
-  const matrix = Array(7).fill(null).map(() => Array(24).fill(0));
-  let maxCount = 0;
-
-  filtered.forEach((row) => {
-    const day = row.ts.getDay();
-    const hour = row.ts.getHours();
-    matrix[day][hour]++;
-    if (matrix[day][hour] > maxCount) maxCount = matrix[day][hour];
-  });
-
-  // Generate grid using DOM API
-  container.innerHTML = "";
-  const grid = document.createElement("div");
-  grid.className = "heatmap-grid";
-
-  const corner = document.createElement("div");
-  corner.className = "heatmap-corner";
-  grid.appendChild(corner);
-
-  // Hour headers
-  for (let h = 0; h < 24; h++) {
-    const header = document.createElement("div");
-    header.className = "heatmap-header";
-    header.textContent = String(h).padStart(2, "0");
-    grid.appendChild(header);
-  }
-
-  // Rows
-  for (let d = 0; d < 7; d++) {
-    const dayLabel = document.createElement("div");
-    dayLabel.className = "heatmap-day";
-    dayLabel.textContent = DAYS_PT[d];
-    grid.appendChild(dayLabel);
-
-    for (let h = 0; h < 24; h++) {
-      const count = matrix[d][h];
-      const intensity = maxCount > 0 ? count / maxCount : 0;
-      const bg = getHeatmapColor(intensity);
-      const cell = document.createElement("div");
-      cell.className = "heatmap-cell";
-      cell.style.background = bg;
-      cell.setAttribute("title", `${DAYS_PT[d]} ${h}h: ${count} visitas`);
-      grid.appendChild(cell);
+  try {
+    const filtered = applyFilters(state.data, state.filters);
+    if (filtered.length === 0) {
+      container.innerHTML = '<div class="empty-state small"><p>Sem dados</p></div>';
+      return;
     }
-  }
 
-  container.appendChild(grid);
+    // Build 7x24 matrix (days x hours)
+    const matrix = Array(7).fill(null).map(() => Array(24).fill(0));
+    let maxCount = 0;
+    let validCount = 0;
+
+    filtered.forEach((row) => {
+      // Validate ts is a valid Date
+      if (!row.ts || !(row.ts instanceof Date) || isNaN(row.ts.getTime())) return;
+      const day = row.ts.getDay();
+      const hour = row.ts.getHours();
+      matrix[day][hour]++;
+      validCount++;
+      if (matrix[day][hour] > maxCount) maxCount = matrix[day][hour];
+    });
+
+    // If no valid timestamps, show message
+    if (validCount === 0) {
+      container.innerHTML = '<div class="empty-state small"><p>Sem dados de horario validos</p></div>';
+      return;
+    }
+
+    // Generate grid using DOM API
+    container.innerHTML = "";
+    const grid = document.createElement("div");
+    grid.className = "heatmap-grid";
+
+    const corner = document.createElement("div");
+    corner.className = "heatmap-corner";
+    grid.appendChild(corner);
+
+    // Hour headers
+    for (let h = 0; h < 24; h++) {
+      const header = document.createElement("div");
+      header.className = "heatmap-header";
+      header.textContent = String(h).padStart(2, "0");
+      grid.appendChild(header);
+    }
+
+    // Rows
+    for (let d = 0; d < 7; d++) {
+      const dayLabel = document.createElement("div");
+      dayLabel.className = "heatmap-day";
+      dayLabel.textContent = DAYS_PT[d];
+      grid.appendChild(dayLabel);
+
+      for (let h = 0; h < 24; h++) {
+        const count = matrix[d][h];
+        const intensity = maxCount > 0 ? count / maxCount : 0;
+        const bg = getHeatmapColor(intensity);
+        const cell = document.createElement("div");
+        cell.className = "heatmap-cell";
+        cell.style.background = bg;
+        cell.setAttribute("title", `${DAYS_PT[d]} ${h}h: ${count} visitas`);
+        grid.appendChild(cell);
+      }
+    }
+
+    container.appendChild(grid);
+  } catch (error) {
+    console.error("[ControlPanel] Error rendering heatmap:", error);
+    container.innerHTML = '<div class="empty-state small"><p>Erro ao renderizar heatmap</p></div>';
+  }
 }
 
 function getHeatmapColor(intensity) {
-  if (intensity === 0) return "rgba(255, 255, 255, 0.05)";
+  // Base color is slightly visible even at 0
+  if (intensity === 0) return "rgba(100, 116, 139, 0.15)";
+  // Gradient from teal to orange
   const r = Math.round(45 + (255 - 45) * intensity);
   const g = Math.round(212 + (122 - 212) * intensity);
   const b = Math.round(191 + (24 - 191) * intensity);
-  const a = 0.2 + 0.7 * intensity;
+  const a = 0.25 + 0.65 * intensity;
   return `rgba(${r}, ${g}, ${b}, ${a})`;
 }
 
@@ -1486,34 +1241,36 @@ function renderTimezoneMap(records, containerId = "timezone-map", listContainerI
 
   if (!mapContainer) return;
 
-  if (records.length === 0) {
-    mapContainer.innerHTML = '<div class="empty-state small"><p>Sem dados de timezone</p></div>';
-    if (listContainer) listContainer.innerHTML = '';
-    return;
-  }
-
-  // Group by UTC offset zone and find most recent access
-  const zoneData = new Map();
-  records.forEach((row) => {
-    const tz = row.timezone || "";
-    const offset = getUtcOffset(tz);
-    const zone = offset !== null ? Math.round(offset) : null;
-    const ts = row.ts ? new Date(row.ts) : null;
-
-    if (zone !== null) {
-      const current = zoneData.get(zone) || {
-        count: 0,
-        lastAccess: null,
-        timezones: new Set()
-      };
-      current.count++;
-      current.timezones.add(tz);
-      if (ts && (!current.lastAccess || ts > current.lastAccess)) {
-        current.lastAccess = ts;
-      }
-      zoneData.set(zone, current);
+  try {
+    if (records.length === 0) {
+      mapContainer.innerHTML = '<div class="empty-state small"><p>Sem dados de timezone</p></div>';
+      if (listContainer) listContainer.innerHTML = '';
+      return;
     }
-  });
+
+    // Group by UTC offset zone and find most recent access
+    const zoneData = new Map();
+    records.forEach((row) => {
+      const tz = row.timezone || "";
+      const offset = getUtcOffset(tz);
+      const zone = offset !== null ? Math.round(offset) : null;
+      // Validate ts is a valid Date
+      const ts = (row.ts && row.ts instanceof Date && !isNaN(row.ts.getTime())) ? row.ts : null;
+
+      if (zone !== null) {
+        const current = zoneData.get(zone) || {
+          count: 0,
+          lastAccess: null,
+          timezones: new Set()
+        };
+        current.count++;
+        current.timezones.add(tz);
+        if (ts && (!current.lastAccess || ts > current.lastAccess)) {
+          current.lastAccess = ts;
+        }
+        zoneData.set(zone, current);
+      }
+    });
 
   // Also group by region for the list
   const regionData = new Map();
@@ -1732,6 +1489,10 @@ function renderTimezoneMap(records, containerId = "timezone-map", listContainerI
     });
 
     listContainer.appendChild(list);
+  }
+  } catch (error) {
+    console.error("[ControlPanel] Error rendering timezone map:", error);
+    mapContainer.innerHTML = '<div class="empty-state small"><p>Erro ao renderizar mapa</p></div>';
   }
 }
 
@@ -2379,24 +2140,11 @@ function computeReturningRate(records) {
 }
 
 function updateStatus() {
-  const updatedAt = document.getElementById("updated-at");
-  if (updatedAt) {
-    updatedAt.textContent = state.lastFetched ? formatDateTime(state.lastFetched) : "--";
-  }
-
-  // Support both old (status-text) and new (status-dot) elements
+  document.getElementById("updated-at").textContent = state.lastFetched ? formatDateTime(state.lastFetched) : "--";
   const statusText = document.getElementById("status-text");
-  const statusDot = document.getElementById("status-dot");
   const hasError = Object.values(state.status).includes("error");
-
-  if (statusText) {
-    statusText.textContent = hasError ? "erro" : "ok";
-    statusText.className = hasError ? "status-error" : "status-ok";
-  }
-
-  if (statusDot) {
-    statusDot.className = hasError ? "status-dot error" : "status-dot ok";
-  }
+  statusText.textContent = hasError ? "erro" : "ok";
+  statusText.className = hasError ? "status-error" : "status-ok";
 }
 
 function showToast(message) {
