@@ -1100,6 +1100,7 @@ function renderSite(siteKey) {
   renderSiteKpis(rows, filtered);
   renderSiteChart(siteKey, filtered);
   renderDistributions(rows);
+  renderHeatmap(rows);
   renderTimezoneMap(rows);
   renderPerformanceKpis(rows);
   renderLatest(rows);
@@ -1324,11 +1325,13 @@ function renderDistributions(records) {
 // HEATMAP - Hour x Day of Week
 // ═══════════════════════════════════════════════════════════════════════════
 
-function renderHeatmap() {
+function renderHeatmap(records) {
   const container = document.getElementById("heatmap-container");
   if (!container) return;
 
-  const filtered = applyFilters(state.data, state.filters);
+  // Use records if provided, otherwise fallback to global data
+  const data = records || state.data;
+  const filtered = applyFilters(data, state.filters);
   if (filtered.length === 0) {
     container.innerHTML = '<div class="empty-state small"><p>Sem dados</p></div>';
     return;
