@@ -911,9 +911,6 @@ function renderOverview() {
 
   // Render mini timeseries
   renderOverviewTimeseries();
-
-  // Render page list
-  renderPageList();
 }
 
 function renderOverviewTimeseries() {
@@ -1056,10 +1053,17 @@ function renderOverviewCards() {
   }));
   cards.appendChild(makeCard("Returning rate", returningRate, "returning"));
 
-  // Site cards with individual sparklines and variations
-  CONFIG.sites.forEach((site, index) => {
-    const rows = state.bySite[site.key] || [];
-    const lastRow = rows.length ? rows[rows.length - 1] : null;
+  // Site cards with individual sparklines and variations - sorted by recency
+  const sortedSites = CONFIG.sites
+    .map((site, index) => {
+      const rows = state.bySite[site.key] || [];
+      const lastRow = rows.length ? rows[rows.length - 1] : null;
+      const lastTs = lastRow?.ts || new Date(0);
+      return { site, index, rows, lastRow, lastTs };
+    })
+    .sort((a, b) => b.lastTs - a.lastTs);
+
+  sortedSites.forEach(({ site, index, rows, lastRow }) => {
     const siteSparkline = getSparklineData(rows);
     const siteVariation = calculateVariation(rows);
 

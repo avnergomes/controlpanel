@@ -105,7 +105,7 @@
     <!-- Conteudo Principal -->
     <main class="main">
       <!-- ═══════════════════════════════════════════════════════════════════
-           VIEW: VISAO GERAL (Lista de Paginas + Mini Timeseries)
+           VIEW: VISAO GERAL (KPI Cards + Mini Timeseries)
            ═══════════════════════════════════════════════════════════════════ -->
       <section id="view-overview" class="view active">
         <!-- KPI Cards with Sparklines -->
@@ -114,27 +114,6 @@
         <!-- Mini Timeseries -->
         <div class="overview-chart-container">
           <canvas id="overview-timeseries"></canvas>
-        </div>
-
-        <!-- Barra de Filtros -->
-        <div class="filters">
-          <select id="filter-site" class="filter-select">
-            <option value="">Todos os sites</option>
-          </select>
-          <div class="filter-search-wrap">
-            <svg class="filter-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-            </svg>
-            <input type="search" id="filter-search" class="filter-search" placeholder="Buscar pagina...">
-          </div>
-          <div class="filter-stats">
-            <span id="page-count">0</span> paginas
-          </div>
-        </div>
-
-        <!-- Lista de Paginas -->
-        <div id="page-list" class="page-list">
-          <!-- Cards de pagina renderizados dinamicamente -->
         </div>
       </section>
 
