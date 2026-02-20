@@ -1005,6 +1005,22 @@ button {
   fill-opacity: 0.8;
 }
 
+/* Map Tooltip */
+.map-tooltip {
+  position: absolute;
+  z-index: 1000;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  color: var(--text);
+  white-space: pre-line;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  display: none;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    TABLES
    ═══════════════════════════════════════════════════════════════════════════ */
