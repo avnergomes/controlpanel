@@ -1342,6 +1342,9 @@ function renderHeatmap(records) {
   let maxCount = 0;
 
   filtered.forEach((row) => {
+    // Validate timestamp
+    if (!row.ts || !(row.ts instanceof Date) || isNaN(row.ts.getTime())) return;
+
     const day = row.ts.getDay();
     const hour = row.ts.getHours();
     matrix[day][hour]++;

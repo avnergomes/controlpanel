@@ -864,12 +864,27 @@ button {
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .heatmap-container {
+  min-height: 200px;
+}
+
+.heatmap-grid {
   display: grid;
   grid-template-columns: 40px repeat(24, 1fr);
   gap: 2px;
 }
 
-.heatmap-row-label {
+.heatmap-corner {
+  /* Empty corner cell */
+}
+
+.heatmap-header {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 2px 0;
+}
+
+.heatmap-day {
   font-size: 0.7rem;
   color: var(--text-muted);
   display: flex;
@@ -880,6 +895,7 @@ button {
   aspect-ratio: 1;
   border-radius: 3px;
   transition: transform 0.15s ease;
+  min-height: 12px;
 }
 
 .heatmap-cell:hover {
