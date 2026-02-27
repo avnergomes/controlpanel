@@ -269,6 +269,8 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- config.local.js deve conter window.LOCAL_CONFIG com a URL do Apps Script -->
+  <script src="config.local.js" onerror="console.warn('config.local.js não encontrado - configure a URL do Apps Script')"></script>
   <script src="config.js"></script>
   <script src="app.js"></script>
 </body>

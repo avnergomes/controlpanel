@@ -1,8 +1,12 @@
+// URL deve ser configurada via config.local.js (não comitar)
+// Copie config.local.js.example para config.local.js e configure a URL
+const LOCAL_CONFIG = window.LOCAL_CONFIG || {};
+
 const CONFIG = {
   pollMs: 60000,
   cacheMinutes: 10,
   maxLatest: 25,
-  proxyUrl: "https://script.google.com/macros/s/AKfycbyk8VzLygqFmid0cSB5Qge8yRKRV-hJNvWlCSZBPrOCnyJyTd21d-6mNRjyJ7NIr_-36Q/exec",
+  proxyUrl: LOCAL_CONFIG.proxyUrl || "",
   // Token removido - autenticação agora é feita via session token do servidor
   sites: [
     { key: "datageoparana", name: "Datageo Parana", kind: "datageo" },

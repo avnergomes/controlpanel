@@ -1,0 +1,6 @@
+// Copie este arquivo para config.local.js e configure a URL do Google Apps Script
+// NÃO comitar config.local.js - ele está no .gitignore
+
+window.LOCAL_CONFIG = {
+  proxyUrl: "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec",
+};
