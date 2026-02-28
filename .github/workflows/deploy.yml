@@ -25,12 +25,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Generate config.local.js
+        env:
+          TRACKING_URL: ${{ secrets.TRACKING_URL }}
         run: |
-          cat > config.local.js << 'EOF'
-          window.LOCAL_CONFIG = {
-            proxyUrl: "${{ secrets.TRACKING_URL }}"
-          };
-          EOF
+          echo "window.LOCAL_CONFIG = { proxyUrl: \"${TRACKING_URL}\" };" > config.local.js
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
