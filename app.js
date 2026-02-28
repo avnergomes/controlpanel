@@ -371,6 +371,7 @@ async function fetchAllSites() {
       throw new Error("unauthorized");
     }
 
+    // TODO(security): move token to POST body — see MIGRATION_NOTES.md
     const url = `${CONFIG.proxyUrl}?action=getData&token=${encodeURIComponent(sessionToken)}`;
     const response = await fetch(url, { redirect: "follow" });
 
