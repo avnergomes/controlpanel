@@ -874,11 +874,11 @@ function showDetail(siteKey, encodedPath) {
               <div>
                 <time>${formatDateTime(a.ts)}</time>
                 <div style="color: var(--text-muted); font-size: 0.75rem;">
-                  ${region.flag} ${a.timezone || "Unknown"}
+                  ${region.flag} ${escapeHtml(a.timezone || "Unknown")}
                 </div>
               </div>
               <div class="access-details">
-                ${a.browser || "?"} · ${a.deviceType || "?"}
+                ${escapeHtml(a.browser || "?")} · ${escapeHtml(a.deviceType || "?")}
               </div>
             </li>
           `;
@@ -1403,7 +1403,7 @@ function getHeatmapColor(intensity) {
 // TIMEZONE MAP
 // ═══════════════════════════════════════════════════════════════════════════
 
-function getRecencyClass(lastAccess) {
+function getTimezoneRecencyClass(lastAccess) {
   if (!lastAccess) return "tz-old";
   const now = new Date();
   const diffMs = now - lastAccess;
@@ -1593,7 +1593,7 @@ function renderTimezoneMap(records, containerId = "timezone-map", listContainerI
       if (!geom) return;
 
       const data = zoneData.get(Math.round(zone));
-      const recencyClass = data ? getRecencyClass(data.lastAccess) : "tz-inactive";
+      const recencyClass = data ? getTimezoneRecencyClass(data.lastAccess) : "tz-inactive";
 
       const group = document.createElementNS(svgNS, "g");
       group.setAttribute("class", `map-region ${recencyClass}`);
@@ -1633,7 +1633,7 @@ function renderTimezoneMap(records, containerId = "timezone-map", listContainerI
     // Fallback: draw simple vertical timezone bands
     for (let z = -12; z <= 12; z++) {
       const data = zoneData.get(z);
-      const recencyClass = data ? getRecencyClass(data.lastAccess) : "tz-inactive";
+      const recencyClass = data ? getTimezoneRecencyClass(data.lastAccess) : "tz-inactive";
 
       const x = ((z + 12) / 24) * width;
       const bandWidth = width / 24;
@@ -1694,7 +1694,7 @@ function renderTimezoneMap(records, containerId = "timezone-map", listContainerI
 
     sorted.forEach(([region, data]) => {
       const pct = ((data.count / total) * 100).toFixed(1);
-      const recencyClass = getRecencyClass(data.lastAccess);
+      const recencyClass = getTimezoneRecencyClass(data.lastAccess);
 
       const item = document.createElement("div");
       item.className = `timezone-item ${recencyClass}`;
