@@ -13,7 +13,7 @@ Thumbs.db
 .env
 .env.*
 *.local
-config.local.js
+# config.local.js - now tracked for GitHub Pages deployment
 
 # Sensitive files
 sheets.txt
