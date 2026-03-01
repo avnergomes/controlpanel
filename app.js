@@ -403,6 +403,10 @@ async function fetchAllSites() {
       throw new Error(payload.error);
     }
 
+    if (!payload.sites) {
+      throw new Error("Resposta inválida: 'sites' não encontrado");
+    }
+
     for (const site of CONFIG.sites) {
       const siteData = payload.sites[site.key];
 
