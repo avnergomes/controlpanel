@@ -28,16 +28,19 @@ const response = await fetch(url, { redirect: "follow" });
 
 To:
 ```javascript
-// PROPOSED (secure)
+// IMPLEMENTED (secure) - uses text/plain to avoid CORS preflight
 const response = await fetch(CONFIG.proxyUrl, {
   method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
+  headers: { 'Content-Type': 'text/plain' },
   body: JSON.stringify({
     action: 'getData',
     token: sessionToken
-  })
+  }),
+  redirect: 'follow'
 });
 ```
+
+**Note**: `Content-Type: text/plain` is used instead of `application/json` to avoid CORS preflight requests with Google Apps Script.
 
 ### Server-side (Google Apps Script)
 
@@ -72,7 +75,7 @@ function doPost(e) {
 
 ## Status
 
-- [ ] Apps Script updated to accept both methods
-- [ ] Client updated to use POST body
+- [ ] Apps Script updated to accept both methods (TODO: update doPost to handle getData action)
+- [x] Client updated to use POST body (2026-03-01)
 - [ ] Query param support deprecated
 - [ ] Query param support removed
