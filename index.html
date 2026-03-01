@@ -269,8 +269,12 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <!-- config.local.js deve conter window.LOCAL_CONFIG com a URL do Apps Script -->
-  <script src="config.local.js" onerror="console.warn('config.local.js não encontrado - configure a URL do Apps Script')"></script>
+  <!-- Proxy URL para Apps Script -->
+  <script>
+    window.LOCAL_CONFIG = {
+      proxyUrl: 'https://script.google.com/macros/s/AKfycbwdSLK3K9_D39sc0UfzYZIM1QEMLxMUudSneAELoqcJjM5ExTSq7ZmMilNzYDx5QK5iMA/exec'
+    };
+  </script>
   <script src="config.js"></script>
   <script src="app.js"></script>
 </body>
