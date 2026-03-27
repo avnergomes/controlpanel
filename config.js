@@ -21,6 +21,7 @@ const CONFIG = {
     { key: "credito-rural-parana", name: "Credito Rural Parana", kind: "credito" },
     { key: "saude-parana", name: "Saude Parana", kind: "saude" },
     { key: "cwbtopo", name: "CWB Topografia", kind: "cwbtopo" },
+    { key: "seguranca-parana", name: "Seguranca Parana", kind: "seguranca" },
   ],
 };
 
@@ -276,6 +277,34 @@ const FIELD_SCHEMAS = {
     screenOrientation: ["screenOrientation", "Screen Orientation"],
     prefersColorScheme: ["prefersColorScheme", "Prefers Color Scheme"],
   },
+  seguranca: {
+    timestamp: ["timestamp", "Timestamp"],
+    url: ["page", "URL", "url"],
+    path: ["pathname", "Pathname"],
+    referrer: ["referrer", "Referrer"],
+    timezone: ["timezone", "Timezone"],
+    sessionId: [],
+    userAgent: [],
+    os: [],
+    browser: [],
+    deviceType: ["deviceType", "Device Type"],
+    language: ["language", "Language"],
+    screenWidth: [],
+    screenHeight: [],
+    connectionType: ["connectionType", "Connection Type"],
+    loadTime: ["loadTime", "LoadTime", "Load Time"],
+    firstContentfulPaint: [],
+    domInteractiveTime: [],
+    isMobile: [],
+    utmSource: ["utmSource", "UTM Source"],
+    utmMedium: ["utmMedium", "UTM Medium"],
+    utmCampaign: ["utmCampaign", "UTM Campaign"],
+    utmTerm: ["utmTerm", "UTM Term"],
+    utmContent: ["utmContent", "UTM Content"],
+    pageTitle: ["pageTitle", "Page Title", "title", "Title"],
+    screenOrientation: ["screenOrientation", "Screen Orientation"],
+    prefersColorScheme: ["prefersColorScheme", "Prefers Color Scheme"],
+  },
   cwbtopo: {
     timestamp: ["timestamp", "Timestamp"],
     url: ["page", "URL", "url"],
@@ -366,8 +395,9 @@ const CHART_COLORS = {
     "#0369a1", // Credito Rural Parana - Sky Blue
     "#14b8a6", // Saude Parana - Teal
     "#d97706", // CWB Topografia - Amber escuro
+    "#475569", // Seguranca Parana - Slate
   ],
-  doughnut: ["#10b981", "#f59e0b", "#3b82f6", "#a855f7", "#ef4444", "#06b6d4", "#ec4899", "#8b5cf6", "#0369a1", "#14b8a6", "#d97706"],
+  doughnut: ["#10b981", "#f59e0b", "#3b82f6", "#a855f7", "#ef4444", "#06b6d4", "#ec4899", "#8b5cf6", "#0369a1", "#14b8a6", "#d97706", "#475569"],
   heatmap: {
     min: "rgba(45, 212, 191, 0.1)",
     max: "rgba(255, 122, 24, 0.9)",
@@ -388,6 +418,7 @@ const SITE_COLORS = {
   "credito-rural-parana": "#0369a1",
   "saude-parana": "#14b8a6",
   "cwbtopo": "#d97706",
+  "seguranca-parana": "#475569",
 };
 
 // Days of week in Portuguese
