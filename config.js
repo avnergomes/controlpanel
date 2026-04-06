@@ -20,8 +20,8 @@ const CONFIG = {
     { key: "censo-parana", name: "Censo Parana", kind: "censo" },
     { key: "credito-rural-parana", name: "Credito Rural Parana", kind: "credito" },
     { key: "saude-parana", name: "Saude Parana", kind: "saude" },
-    { key: "cwbtopo", name: "CWB Topografia", kind: "cwbtopo" },
     { key: "seguranca-parana", name: "Seguranca Parana", kind: "seguranca" },
+    { key: "cwbtopo", name: "CWB Topografia", kind: "cwbtopo" },
   ],
 };
 
@@ -394,10 +394,10 @@ const CHART_COLORS = {
     "#8b5cf6", // Censo Parana - Violeta
     "#0369a1", // Credito Rural Parana - Sky Blue
     "#14b8a6", // Saude Parana - Teal
-    "#d97706", // CWB Topografia - Amber escuro
     "#475569", // Seguranca Parana - Slate
+    "#d97706", // CWB Topografia - Amber escuro
   ],
-  doughnut: ["#10b981", "#f59e0b", "#3b82f6", "#a855f7", "#ef4444", "#06b6d4", "#ec4899", "#8b5cf6", "#0369a1", "#14b8a6", "#d97706", "#475569"],
+  doughnut: ["#10b981", "#f59e0b", "#3b82f6", "#a855f7", "#ef4444", "#06b6d4", "#ec4899", "#8b5cf6", "#0369a1", "#14b8a6", "#475569", "#d97706"],
   heatmap: {
     min: "rgba(45, 212, 191, 0.1)",
     max: "rgba(255, 122, 24, 0.9)",
@@ -417,8 +417,8 @@ const SITE_COLORS = {
   "censo-parana": "#8b5cf6",
   "credito-rural-parana": "#0369a1",
   "saude-parana": "#14b8a6",
-  "cwbtopo": "#d97706",
   "seguranca-parana": "#475569",
+  "cwbtopo": "#d97706",
 };
 
 // Days of week in Portuguese
