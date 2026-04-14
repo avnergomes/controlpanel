@@ -837,7 +837,7 @@ function renderPageCard(page) {
           <span class="site-badge" style="--badge-color: ${siteColor}">${site?.name || page.siteKey}</span>
           <span>${timeAgo}</span>
           <span>${region.flag} ${region.region}</span>
-          <span>${last.browser || "?"} · ${last.deviceType || "?"}</span>
+          <span>${last.deviceType || "?"} · ${last.language || "?"}</span>
         </div>
       </div>
       <div class="page-stats">
@@ -886,7 +886,7 @@ function showDetail(siteKey, encodedPath) {
                 </div>
               </div>
               <div class="access-details">
-                ${escapeHtml(a.browser || "?")} · ${escapeHtml(a.deviceType || "?")}
+                ${escapeHtml(a.deviceType || "?")} · ${escapeHtml(a.language || "?")}
               </div>
             </li>
           `;
@@ -1017,29 +1017,25 @@ function renderOverviewCards() {
   }
 
   const totalVisits = state.data.length;
-  const uniqueSessions = new Set(state.data.map((row) => row.sessionId).filter(Boolean)).size;
 
   // Calculate sparkline data and variations
   const totalSparkline = getSparklineData(state.data);
   const totalVariation = calculateVariation(state.data);
 
   // Mobile %
-  const mobileCount = state.data.filter((r) => r.isMobile === true || r.deviceType === "Mobile").length;
+  const mobileCount = state.data.filter((r) => r.deviceType === "Mobile").length;
   const mobilePct = totalVisits > 0 ? ((mobileCount / totalVisits) * 100).toFixed(1) + "%" : "N/D";
 
   // Avg load time
   const loadTimes = state.data.map((r) => r.loadTime).filter((v) => v && v > 0);
   const avgLoad = loadTimes.length ? (loadTimes.reduce((a, b) => a + b, 0) / loadTimes.length / 1000).toFixed(2) + "s" : "sem dados";
 
-  // Top browser
-  const browserCounts = aggregateCounts(state.data, (r) => r.browser || "Unknown");
-  const topBrowser = browserCounts.length ? browserCounts[0][0] : "N/D";
-  const topBrowserPct = browserCounts.length && totalVisits > 0
-    ? ((browserCounts[0][1] / totalVisits) * 100).toFixed(0) + "%"
+  // Top device
+  const deviceCounts = aggregateCounts(state.data, (r) => r.deviceType || "Unknown");
+  const topDevice = deviceCounts.length ? deviceCounts[0][0] : "N/D";
+  const topDevicePct = deviceCounts.length && totalVisits > 0
+    ? ((deviceCounts[0][1] / totalVisits) * 100).toFixed(0) + "%"
     : "";
-
-  // Returning rate
-  const returningRate = computeReturningRate(state.data);
 
   // Enhanced cards with sparklines and variations
   cards.appendChild(makeCard("Total de acessos", formatNumber(totalVisits), "total", {
@@ -1049,17 +1045,11 @@ function renderOverviewCards() {
     footer: "ultimos 7 dias"
   }));
 
-  cards.appendChild(makeCard("Sessoes unicas", formatNumber(uniqueSessions), "sessions", {
-    sparklineData: getSparklineData(state.data.filter((r) => r.sessionId)),
-    sparklineColor: "#ff7a18"
-  }));
-
   cards.appendChild(makeCard("Mobile %", mobilePct, "mobile"));
   cards.appendChild(makeCard("Tempo medio de carga", avgLoad, "load"));
-  cards.appendChild(makeCard("Top Browser", topBrowser, "browser", {
-    footer: topBrowserPct ? `${topBrowserPct} dos acessos` : undefined
+  cards.appendChild(makeCard("Top Dispositivo", topDevice, "device", {
+    footer: topDevicePct ? `${topDevicePct} dos acessos` : undefined
   }));
-  cards.appendChild(makeCard("Returning rate", returningRate, "returning"));
 
   // Site cards with individual sparklines and variations - sorted by recency
   const sortedSites = CONFIG.sites
@@ -1110,179 +1100,12 @@ function renderSite(siteKey) {
   renderDistributions(rows);
   renderHeatmap(rows);
   renderTimezoneMap(rows);
-  renderPerformanceKpis(rows);
   renderLatest(rows);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CHART RENDERING
 // ═══════════════════════════════════════════════════════════════════════════
-
-function renderOverviewChart() {
-  const filtered = applyFilters(state.data, state.filters);
-
-  if (filtered.length === 0) {
-    const ctx = document.getElementById("overview-chart");
-    if (ctx) ctx.parentElement.innerHTML = '<div class="empty-state"><p>Nenhum dado no periodo</p></div>';
-    return;
-  }
-
-  const { labels, series, totals } = buildSeries(filtered, state.filters.granularity, true);
-
-  const datasets = CONFIG.sites.map((site, index) => ({
-    label: site.name,
-    data: series[site.key] || labels.map(() => 0),
-    borderColor: CHART_COLORS.sites[index],
-    backgroundColor: CHART_COLORS.sites[index],
-    tension: 0.2,
-    pointRadius: 2,
-  }));
-
-  datasets.push({
-    label: "Total",
-    data: totals,
-    borderColor: "#ffffff",
-    backgroundColor: "#ffffff",
-    borderDash: [6, 6],
-    tension: 0.2,
-    pointRadius: 0,
-  });
-
-  renderLineChart("overview-chart", labels, datasets, "Visitas");
-}
-
-function renderOverviewDevices() {
-  const counts = { Mobile: 0, Desktop: 0, Tablet: 0 };
-  state.data.forEach((r) => {
-    const type = r.deviceType || "Unknown";
-    if (type === "Mobile") counts.Mobile++;
-    else if (type === "Tablet") counts.Tablet++;
-    else if (type === "Desktop") counts.Desktop++;
-  });
-  renderDoughnutChart("overview-devices-chart", Object.entries(counts), "Dispositivos");
-}
-
-function renderOverviewBrowsers() {
-  const counts = aggregateCounts(state.data, (r) => r.browser || "Unknown");
-  renderBarChart("overview-browsers-chart", counts, "Browser");
-}
-
-function renderOverviewReturning() {
-  const known = state.data.filter((r) => r.returning !== undefined);
-  const returning = known.filter((r) => r.returning).length;
-  const newVisitors = known.length - returning;
-
-  if (known.length === 0) {
-    const ctx = document.getElementById("overview-returning-chart");
-    if (ctx) ctx.parentElement.innerHTML = '<div class="empty-state small"><p>Sem dados</p></div>';
-    return;
-  }
-
-  renderDoughnutChart("overview-returning-chart", [["Novos", newVisitors], ["Retornantes", returning]], "Visitantes");
-}
-
-function renderUTMCharts() {
-  // UTM Source
-  const sourceCounts = aggregateCounts(state.data, (r) => r.utmSource || "Direct");
-  renderBarChart("utm-source-chart", sourceCounts, "UTM Source");
-
-  // UTM Medium
-  const mediumCounts = aggregateCounts(state.data, (r) => r.utmMedium || "None");
-  renderBarChart("utm-medium-chart", mediumCounts, "UTM Medium");
-
-  // UTM Campaign
-  const campaignCounts = aggregateCounts(state.data, (r) => r.utmCampaign || "None");
-  renderBarChart("utm-campaign-chart", campaignCounts, "UTM Campaign");
-}
-
-function renderConnectionChart() {
-  const counts = aggregateCounts(state.data, (r) => r.connectionType || "Unknown");
-  const ctx = document.getElementById("overview-connection-chart");
-  if (!ctx) return;
-
-  if (counts.length === 0 || (counts.length === 1 && counts[0][0] === "Unknown")) {
-    ctx.parentElement.innerHTML = '<div class="empty-state small"><p>Sem dados</p></div>';
-    return;
-  }
-
-  renderDoughnutChart("overview-connection-chart", counts, "Conexao");
-}
-
-function renderThemeChart() {
-  const counts = aggregateCounts(state.data, (r) => {
-    const theme = String(r.prefersColorScheme || "");
-    if (theme.toLowerCase() === "dark") return "Dark";
-    if (theme.toLowerCase() === "light") return "Light";
-    return "Unknown";
-  });
-
-  const ctx = document.getElementById("overview-theme-chart");
-  if (!ctx) return;
-
-  const filtered = counts.filter(([k]) => k !== "Unknown");
-  if (filtered.length === 0) {
-    ctx.parentElement.innerHTML = '<div class="empty-state small"><p>Sem dados</p></div>';
-    return;
-  }
-
-  renderDoughnutChart("overview-theme-chart", filtered, "Tema");
-}
-
-function renderOrientationChart() {
-  const counts = aggregateCounts(state.data, (r) => {
-    const orientation = String(r.screenOrientation || "");
-    if (orientation.toLowerCase().includes("portrait")) return "Portrait";
-    if (orientation.toLowerCase().includes("landscape")) return "Landscape";
-    return "Unknown";
-  });
-
-  const ctx = document.getElementById("overview-orientation-chart");
-  if (!ctx) return;
-
-  const filtered = counts.filter(([k]) => k !== "Unknown");
-  if (filtered.length === 0) {
-    ctx.parentElement.innerHTML = '<div class="empty-state small"><p>Sem dados</p></div>';
-    return;
-  }
-
-  renderDoughnutChart("overview-orientation-chart", filtered, "Orientacao");
-}
-
-function renderTopPages() {
-  const table = document.querySelector("#top-pages tbody");
-  if (!table) return;
-  table.innerHTML = "";
-
-  const pageCounts = new Map();
-  state.data.forEach((row) => {
-    const title = row.pageTitle || row.path || row.url || "Unknown";
-    if (title && title !== "Unknown") {
-      pageCounts.set(title, (pageCounts.get(title) || 0) + 1);
-    }
-  });
-
-  if (pageCounts.size === 0) {
-    table.innerHTML = '<tr><td colspan="3" class="empty-cell">Nenhum dado</td></tr>';
-    return;
-  }
-
-  const sorted = Array.from(pageCounts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 10);
-  const total = state.data.length;
-
-  sorted.forEach(([title, count]) => {
-    const tr = document.createElement("tr");
-    const pct = ((count / total) * 100).toFixed(1);
-    const td1 = document.createElement("td");
-    td1.textContent = truncate(title, 60);
-    td1.setAttribute("title", title);
-    const td2 = document.createElement("td");
-    td2.textContent = formatNumber(count);
-    const td3 = document.createElement("td");
-    td3.textContent = pct + "%";
-    tr.append(td1, td2, td3);
-    table.appendChild(tr);
-  });
-}
 
 function truncate(str, maxLen) {
   if (!str || str.length <= maxLen) return str;
@@ -1316,17 +1139,22 @@ function renderSiteChart(siteKey, records) {
 function renderDistributions(records) {
   const tzCounts = aggregateCounts(records, (row) => row.timezone || "Unknown");
   const refCounts = aggregateCounts(records, (row) => normalizeReferrer(row.referrer));
-  const osCounts = aggregateCounts(records, (row) => row.os || "Unknown");
-  const browserCounts = aggregateCounts(records, (row) => row.browser || "Unknown");
   const deviceCounts = aggregateCounts(records, (row) => row.deviceType || "Unknown");
   const langCounts = aggregateCounts(records, (row) => row.language || "Unknown");
+  const connCounts = aggregateCounts(records, (row) => row.connectionType || "Unknown");
+  const themeCounts = aggregateCounts(records, (row) => {
+    const theme = String(row.prefersColorScheme || "");
+    if (theme.toLowerCase() === "dark") return "Dark";
+    if (theme.toLowerCase() === "light") return "Light";
+    return "Unknown";
+  }).filter(([k]) => k !== "Unknown");
 
   renderBarChart("tz-chart", tzCounts, "Timezone");
   renderBarChart("ref-chart", refCounts, "Referrer");
-  renderBarChart("os-chart", osCounts, "OS");
-  renderBarChart("browser-chart", browserCounts, "Browser");
   renderDoughnutChart("device-chart", deviceCounts, "Dispositivo");
   renderBarChart("lang-chart", langCounts, "Idioma");
+  renderDoughnutChart("connection-chart", connCounts.filter(([k]) => k !== "Unknown"), "Conexao");
+  renderDoughnutChart("theme-chart", themeCounts, "Tema");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1791,7 +1619,7 @@ function exportData(format = "csv") {
 }
 
 function exportCSV(records, filename) {
-  const headers = ["Data", "Site", "URL", "Path", "Referrer", "Timezone", "OS", "Browser", "Dispositivo", "Idioma", "LoadTime(ms)"];
+  const headers = ["Data", "Site", "URL", "Path", "Referrer", "Timezone", "Dispositivo", "Idioma", "Conexao", "Tema", "Orientacao", "LoadTime(ms)", "pageTitle"];
   const rows = records.map((r) => [
     r.ts ? r.ts.toISOString() : "",
     r.siteKey || "",
@@ -1799,11 +1627,13 @@ function exportCSV(records, filename) {
     r.path || "",
     r.referrer || "",
     r.timezone || "",
-    r.os || "",
-    r.browser || "",
     r.deviceType || "",
     r.language || "",
+    r.connectionType || "",
+    r.prefersColorScheme || "",
+    r.screenOrientation || "",
     r.loadTime || "",
+    r.pageTitle || "",
   ]);
 
   const csvContent = [headers, ...rows]
@@ -1839,74 +1669,10 @@ function formatDateForFilename(date) {
 // SITE COMPARISON TABLE
 // ═══════════════════════════════════════════════════════════════════════════
 
-function renderComparison() {
-  const container = document.getElementById("comparison-table");
-  if (!container) return;
-
-  const tbody = container.querySelector("tbody");
-  if (!tbody) return;
-  tbody.innerHTML = "";
-
-  CONFIG.sites.forEach((site, index) => {
-    const rows = state.bySite[site.key] || [];
-    const filtered = applyFilters(rows, state.filters);
-
-    const total = rows.length;
-    const periodCount = filtered.length;
-    const uniqueSessions = new Set(rows.map((r) => r.sessionId).filter(Boolean)).size;
-    const mobileCount = rows.filter((r) => r.deviceType === "Mobile").length;
-    const mobilePct = total > 0 ? ((mobileCount / total) * 100).toFixed(1) : "0";
-    const loadTimes = rows.map((r) => r.loadTime).filter((v) => v && v > 0);
-    const avgLoad = loadTimes.length ? (loadTimes.reduce((a, b) => a + b, 0) / loadTimes.length / 1000).toFixed(2) : "--";
-    const lastAccess = rows.length ? formatDateTime(rows[rows.length - 1].ts) : "--";
-
-    const tr = document.createElement("tr");
-    const tdName = document.createElement("td");
-    tdName.textContent = site.name;
-    tdName.style.borderLeft = `3px solid ${CHART_COLORS.sites[index]}`;
-    const tdTotal = document.createElement("td");
-    tdTotal.textContent = formatNumber(total);
-    const tdPeriod = document.createElement("td");
-    tdPeriod.textContent = formatNumber(periodCount);
-    const tdSessions = document.createElement("td");
-    tdSessions.textContent = formatNumber(uniqueSessions);
-    const tdMobile = document.createElement("td");
-    tdMobile.textContent = mobilePct + "%";
-    const tdLoad = document.createElement("td");
-    tdLoad.textContent = avgLoad + "s";
-    const tdLast = document.createElement("td");
-    tdLast.textContent = lastAccess;
-    tr.append(tdName, tdTotal, tdPeriod, tdSessions, tdMobile, tdLoad, tdLast);
-    tbody.appendChild(tr);
-  });
-}
 
 // ═══════════════════════════════════════════════════════════════════════════
-// PERFORMANCE & LATEST
+// LATEST ACCESSES
 // ═══════════════════════════════════════════════════════════════════════════
-
-function renderPerformanceKpis(records) {
-  const target = document.getElementById("site-performance");
-  if (!target) return;
-  target.innerHTML = "";
-
-  // Apenas loadTime é coletado pelo tracking LGPD
-  const loadTimes = records.map((r) => r.loadTime).filter((v) => v && v > 0);
-
-  if (loadTimes.length === 0) {
-    target.parentElement.style.display = "none";
-    return;
-  }
-
-  target.parentElement.style.display = "";
-  const avg = (loadTimes.reduce((a, b) => a + b, 0) / loadTimes.length / 1000).toFixed(2);
-  const min = (Math.min(...loadTimes) / 1000).toFixed(2);
-  const max = (Math.max(...loadTimes) / 1000).toFixed(2);
-
-  target.appendChild(makeCard("Tempo medio", avg + "s", "perf"));
-  target.appendChild(makeCard("Mais rapido", min + "s", "perf"));
-  target.appendChild(makeCard("Mais lento", max + "s", "perf"));
-}
 
 function renderLatest(records) {
   const table = document.querySelector("#latest-table tbody");
@@ -1914,7 +1680,7 @@ function renderLatest(records) {
   table.innerHTML = "";
 
   if (records.length === 0) {
-    table.innerHTML = '<tr><td colspan="7" class="empty-cell">Nenhum registro</td></tr>';
+    table.innerHTML = '<tr><td colspan="6" class="empty-cell">Nenhum registro</td></tr>';
     return;
   }
 
@@ -1926,9 +1692,8 @@ function renderLatest(records) {
       row.path || row.url || "--",
       normalizeReferrer(row.referrer),
       row.timezone || "--",
-      row.os || "--",
-      row.browser || "--",
       row.deviceType || "--",
+      row.language || "--",
     ];
     cells.forEach((text) => {
       const td = document.createElement("td");
@@ -1945,42 +1710,19 @@ function renderSiteKpis(allRows, filteredRows) {
   target.innerHTML = "";
 
   const total = allRows.length;
-  const uniqueSessions = new Set(allRows.map((row) => row.sessionId).filter(Boolean)).size;
-  const singleVisitSessions = countSingleVisitSessions(allRows);
-  const returningRate = computeReturningRate(allRows);
+
+  // Mobile %
+  const mobileCount = allRows.filter((r) => r.deviceType === "Mobile").length;
+  const mobilePct = total > 0 ? ((mobileCount / total) * 100).toFixed(1) + "%" : "N/D";
+
+  // Avg load time
+  const loadTimes = allRows.map((r) => r.loadTime).filter((v) => v && v > 0);
+  const avgLoad = loadTimes.length ? (loadTimes.reduce((a, b) => a + b, 0) / loadTimes.length / 1000).toFixed(2) + "s" : "sem dados";
 
   target.appendChild(makeCard("Total de acessos", formatNumber(total), "total"));
-  target.appendChild(makeCard("Sessoes unicas", formatNumber(uniqueSessions), "sessions"));
-  target.appendChild(makeCard("Acessos sem repeticao", formatNumber(singleVisitSessions), "single"));
-  target.appendChild(makeCard("Returning rate", returningRate, "returning"));
   target.appendChild(makeCard("Acessos no periodo", formatNumber(filteredRows.length), "period"));
-}
-
-function renderTopPeriods() {
-  const table = document.querySelector("#top-periods tbody");
-  if (!table) return;
-  table.innerHTML = "";
-
-  const filtered = applyFilters(state.data, state.filters);
-  if (filtered.length === 0) {
-    table.innerHTML = '<tr><td colspan="2" class="empty-cell">Nenhum dado</td></tr>';
-    return;
-  }
-
-  const { labels, totals } = buildSeries(filtered, state.filters.granularity, true);
-  const pairs = labels.map((label, index) => ({ label, total: totals[index] }));
-  pairs.sort((a, b) => b.total - a.total);
-
-  pairs.slice(0, 10).forEach((entry) => {
-    const tr = document.createElement("tr");
-    const tdLabel = document.createElement("td");
-    tdLabel.textContent = entry.label;
-    const tdTotal = document.createElement("td");
-    tdTotal.textContent = formatNumber(entry.total);
-    tr.appendChild(tdLabel);
-    tr.appendChild(tdTotal);
-    table.appendChild(tr);
-  });
+  target.appendChild(makeCard("Mobile %", mobilePct, "mobile"));
+  target.appendChild(makeCard("Tempo medio de carga", avgLoad, "load"));
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2407,23 +2149,6 @@ function getMaxTimestamp(records) {
   return records[records.length - 1].ts;
 }
 
-function countSingleVisitSessions(records) {
-  const counts = new Map();
-  records.forEach((row) => {
-    if (!row.sessionId) return;
-    counts.set(row.sessionId, (counts.get(row.sessionId) || 0) + 1);
-  });
-  return Array.from(counts.values()).filter((count) => count === 1).length;
-}
-
-function computeReturningRate(records) {
-  const values = records.filter((row) => row.returning !== undefined);
-  if (!values.length) return "N/A";
-  const returning = values.filter((row) => row.returning).length;
-  const rate = (returning / values.length) * 100;
-  return `${rate.toFixed(1)}%`;
-}
-
 function updateStatus() {
   const updatedAt = document.getElementById("updated-at");
   if (updatedAt) {
@@ -2668,16 +2393,16 @@ function generateInsights(data) {
     }
   }
 
-  // 4. Top browser dominance
-  const browserCounts = aggregateCounts(data, (r) => r.browser || "Unknown");
-  if (browserCounts.length > 0) {
-    const total = browserCounts.reduce((sum, [, count]) => sum + count, 0);
-    const topBrowser = browserCounts[0];
-    const pct = ((topBrowser[1] / total) * 100).toFixed(0);
-    if (pct >= 60) {
+  // 4. Top device dominance
+  const deviceDomCounts = aggregateCounts(data, (r) => r.deviceType || "Unknown");
+  if (deviceDomCounts.length > 0) {
+    const total = deviceDomCounts.reduce((sum, [, count]) => sum + count, 0);
+    const topDev = deviceDomCounts[0];
+    const pct = ((topDev[1] / total) * 100).toFixed(0);
+    if (pct >= 60 && topDev[0] !== "Unknown") {
       insights.push({
         icon: "🏆",
-        text: `${topBrowser[0]} domina com ${pct}%`,
+        text: `${topDev[0]} domina com ${pct}%`,
         type: "info",
       });
     }
