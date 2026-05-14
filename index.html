@@ -6,118 +6,157 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' fonts.googleapis.com; font-src fonts.gstatic.com; connect-src 'self' script.google.com script.googleusercontent.com cdn.jsdelivr.net; img-src 'self' data:;">
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
   <meta name="referrer" content="strict-origin-when-cross-origin">
-  <title>Control Panel</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0a0f'/%3E%3Ccircle cx='32' cy='32' r='12' fill='%2322c55e'/%3E%3C/svg%3E">
+  <title>OBSERVATORY ⊹ Control Panel</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='6' fill='%2306070d'/%3E%3Cpath d='M8 32h48M32 8v48' stroke='%2300f5d4' stroke-width='1' opacity='0.4'/%3E%3Ccircle cx='32' cy='32' r='10' fill='none' stroke='%2300f5d4' stroke-width='2'/%3E%3Ccircle cx='32' cy='32' r='3' fill='%2300f5d4'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <!-- Login Overlay -->
+  <!-- Login Gateway -->
   <div id="login-overlay" class="login-overlay">
+    <div class="login-atmosphere" aria-hidden="true">
+      <div class="grid-mesh"></div>
+      <div class="login-glow"></div>
+    </div>
     <div class="login-card">
+      <div class="login-bracket login-bracket-tl" aria-hidden="true"></div>
+      <div class="login-bracket login-bracket-tr" aria-hidden="true"></div>
+      <div class="login-bracket login-bracket-bl" aria-hidden="true"></div>
+      <div class="login-bracket login-bracket-br" aria-hidden="true"></div>
       <div class="login-header">
-        <div class="badge">Acesso Restrito</div>
-        <h2>Control Panel</h2>
-        <p>Digite a senha para acessar o painel.</p>
+        <div class="badge">⊹ ACCESS GATE / RESTRITO</div>
+        <h2>Observatory</h2>
+        <p class="login-sub">Telemetria do ecossistema datageoparaná. Autorização necessária.</p>
       </div>
       <form id="login-form" class="login-form">
         <label>
-          Senha
-          <input type="password" id="login-password" placeholder="Digite a senha" required autocomplete="current-password">
+          <span class="label-text">Senha de acesso</span>
+          <input type="password" id="login-password" placeholder="••••••••" required autocomplete="current-password">
         </label>
-        <button type="submit" class="btn btn-full">Entrar</button>
-        <p id="login-error" class="login-error" hidden>Senha incorreta</p>
+        <button type="submit" class="btn btn-full">
+          <span>Iniciar Sessão</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </button>
+        <p id="login-error" class="login-error" hidden>// Erro: credencial inválida</p>
       </form>
+      <p class="login-footer">SYS::v2.1 · obs-control · <span id="footer-year">2026</span></p>
     </div>
   </div>
 
+  <!-- Atmospheric scan-line + grid mesh (decorative) -->
+  <div class="atmosphere" aria-hidden="true">
+    <div class="scan-line"></div>
+    <div class="grid-mesh"></div>
+    <div class="vignette"></div>
+  </div>
+
   <div class="app">
-    <!-- Header Compacto -->
+    <!-- Header Observatório -->
     <header class="header">
       <div class="header-brand">
-        <h1>Control Panel</h1>
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.2">
+            <path d="M3 12h18M12 3v18"/>
+            <circle cx="12" cy="12" r="6"/>
+            <circle cx="12" cy="12" r="1.5" fill="currentColor"/>
+          </svg>
+        </span>
+        <div class="brand-text">
+          <span class="brand-kicker">SYS//OBS-01</span>
+          <h1>Observatory</h1>
+        </div>
+      </div>
+      <div class="header-meta" aria-hidden="true">
+        <span class="meta-cell" data-label="UPLINK">
+          <span class="status-dot" id="status-dot"></span>
+          <span class="meta-value">LIVE</span>
+        </span>
+        <span class="meta-cell" data-label="LAST SYNC">
+          <time id="updated-at" class="meta-value mono">--:--:--</time>
+        </span>
+        <span class="meta-cell" data-label="UTC">
+          <time id="utc-clock" class="meta-value mono">--:--:--</time>
+        </span>
       </div>
       <div class="header-actions">
-        <span class="header-status">
-          <span class="status-dot" id="status-dot"></span>
-          <time id="updated-at">--</time>
-        </span>
-        <button id="refresh-btn" class="btn-icon" title="Atualizar">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <button id="refresh-btn" class="btn-icon" title="Re-sync">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
             <path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9v-3m-9-6a9 9 0 0 1 9-9m-9 9h3m6-9v3"/>
           </svg>
+          <span class="btn-icon-label">SYNC</span>
         </button>
-        <button class="btn-icon" onclick="exportData('csv')" title="Exportar CSV">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <button class="btn-icon" onclick="exportData('csv')" title="Exfil CSV">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
           </svg>
+          <span class="btn-icon-label">EXFIL</span>
         </button>
       </div>
     </header>
 
-    <!-- Navegacao por Tabs -->
-    <nav class="tabs" role="tablist">
+    <!-- Channel Strip — observatório sources -->
+    <nav class="tabs" role="tablist" aria-label="Canais de telemetria">
       <a href="#/overview" class="tab active" data-route="overview" role="tab" aria-selected="true">
-        <span class="tab-icon">📊</span>
-        <span class="tab-label">Visao Geral</span>
+        <span class="tab-code">[00]</span>
+        <span class="tab-label">Visão Geral</span>
       </a>
       <div class="tab-divider"></div>
       <a href="#/datageoparana" class="tab" data-route="datageoparana" role="tab">
-        <span class="tab-dot" style="--dot-color: #10b981"></span>
+        <span class="tab-code" style="--dot-color: #00f5d4">[01]</span>
         <span class="tab-label">Datageo</span>
       </a>
       <a href="#/portfolio" class="tab" data-route="portfolio" role="tab">
-        <span class="tab-dot" style="--dot-color: #f59e0b"></span>
+        <span class="tab-code" style="--dot-color: #ffb800">[02]</span>
         <span class="tab-label">Portfolio</span>
       </a>
       <a href="#/vbp-parana" class="tab" data-route="vbp-parana" role="tab">
-        <span class="tab-dot" style="--dot-color: #3b82f6"></span>
+        <span class="tab-code" style="--dot-color: #0072B2">[03]</span>
         <span class="tab-label">VBP</span>
       </a>
       <a href="#/precos-florestais" class="tab" data-route="precos-florestais" role="tab">
-        <span class="tab-dot" style="--dot-color: #22c55e"></span>
+        <span class="tab-code" style="--dot-color: #009E73">[04]</span>
         <span class="tab-label">Florestais</span>
       </a>
       <a href="#/precos-terras" class="tab" data-route="precos-terras" role="tab">
-        <span class="tab-dot" style="--dot-color: #a855f7"></span>
+        <span class="tab-code" style="--dot-color: #CC79A7">[05]</span>
         <span class="tab-label">Terras</span>
       </a>
       <a href="#/precos-diarios" class="tab" data-route="precos-diarios" role="tab">
-        <span class="tab-dot" style="--dot-color: #ef4444"></span>
-        <span class="tab-label">Diarios</span>
+        <span class="tab-code" style="--dot-color: #D55E00">[06]</span>
+        <span class="tab-label">Diários</span>
       </a>
       <a href="#/comexstat-parana" class="tab" data-route="comexstat-parana" role="tab">
-        <span class="tab-dot" style="--dot-color: #06b6d4"></span>
+        <span class="tab-code" style="--dot-color: #56B4E9">[07]</span>
         <span class="tab-label">ComexStat</span>
       </a>
       <a href="#/emprego-agro-parana" class="tab" data-route="emprego-agro-parana" role="tab">
-        <span class="tab-dot" style="--dot-color: #ec4899"></span>
+        <span class="tab-code" style="--dot-color: #ff3864">[08]</span>
         <span class="tab-label">Emprego</span>
       </a>
       <a href="#/censo-parana" class="tab" data-route="censo-parana" role="tab">
-        <span class="tab-dot" style="--dot-color: #8b5cf6"></span>
+        <span class="tab-code" style="--dot-color: #E69F00">[09]</span>
         <span class="tab-label">Censo</span>
       </a>
       <a href="#/credito-rural-parana" class="tab" data-route="credito-rural-parana" role="tab">
-        <span class="tab-dot" style="--dot-color: #0369a1"></span>
-        <span class="tab-label">Credito</span>
+        <span class="tab-code" style="--dot-color: #3a86ff">[10]</span>
+        <span class="tab-label">Crédito</span>
       </a>
       <a href="#/saude-parana" class="tab" data-route="saude-parana" role="tab">
-        <span class="tab-dot" style="--dot-color: #14b8a6"></span>
-        <span class="tab-label">Saude</span>
+        <span class="tab-code" style="--dot-color: #f0e442">[11]</span>
+        <span class="tab-label">Saúde</span>
       </a>
       <a href="#/seguranca-parana" class="tab" data-route="seguranca-parana" role="tab">
-        <span class="tab-dot" style="--dot-color: #475569"></span>
-        <span class="tab-label">Seguranca</span>
+        <span class="tab-code" style="--dot-color: #8b93a8">[12]</span>
+        <span class="tab-label">Segurança</span>
       </a>
       <a href="#/c2-parana" class="tab" data-route="c2-parana" role="tab">
-        <span class="tab-dot" style="--dot-color: #f97316"></span>
+        <span class="tab-code" style="--dot-color: #ff8500">[13]</span>
         <span class="tab-label">C2</span>
       </a>
       <a href="#/cwbtopo" class="tab" data-route="cwbtopo" role="tab">
-        <span class="tab-dot" style="--dot-color: #d97706"></span>
+        <span class="tab-code" style="--dot-color: #b6a682">[14]</span>
         <span class="tab-label">CWBTopo</span>
       </a>
     </nav>
@@ -290,5 +329,24 @@
   <script src="config.local.js"></script>
   <script src="config.js"></script>
   <script src="app.js"></script>
+  <script>
+    // Live UTC clock — observatory chrome.
+    (function () {
+      var el = document.getElementById('utc-clock');
+      if (!el) return;
+      function pad(n) { return n < 10 ? '0' + n : '' + n; }
+      function tick() {
+        var d = new Date();
+        el.textContent = pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ':' + pad(d.getUTCSeconds()) + ' Z';
+      }
+      tick();
+      setInterval(tick, 1000);
+    })();
+    // Fill year in login footer.
+    (function () {
+      var y = document.getElementById('footer-year');
+      if (y) y.textContent = new Date().getFullYear();
+    })();
+  </script>
 </body>
 </html>
