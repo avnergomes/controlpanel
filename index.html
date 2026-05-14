@@ -12,6 +12,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="i18n/i18n-switcher.css">
+  <script defer src="i18n/i18n-dict.js"></script>
+  <script defer src="i18n/i18n.js"></script>
 </head>
 <body>
   <!-- Login Gateway -->
@@ -26,22 +29,23 @@
       <div class="login-bracket login-bracket-bl" aria-hidden="true"></div>
       <div class="login-bracket login-bracket-br" aria-hidden="true"></div>
       <div class="login-header">
-        <div class="badge">⊹ ACCESS GATE / RESTRITO</div>
-        <h2>Observatory</h2>
-        <p class="login-sub">Telemetria do ecossistema datageoparaná. Autorização necessária.</p>
+        <div class="badge" data-i18n="obs.accessGate">⊹ ACCESS GATE / RESTRITO</div>
+        <h2 data-i18n="obs.title">Observatory</h2>
+        <p class="login-sub" data-i18n="obs.accessDescription">Telemetria do ecossistema datageoparaná. Autorização necessária.</p>
       </div>
       <form id="login-form" class="login-form">
         <label>
-          <span class="label-text">Senha de acesso</span>
+          <span class="label-text" data-i18n="obs.accessLabel">Senha de acesso</span>
           <input type="password" id="login-password" placeholder="••••••••" required autocomplete="current-password">
         </label>
         <button type="submit" class="btn btn-full">
-          <span>Iniciar Sessão</span>
+          <span data-i18n="obs.access">Iniciar Sessão</span>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
         </button>
         <p id="login-error" class="login-error" hidden>// Erro: credencial inválida</p>
       </form>
-      <p class="login-footer">SYS::v2.1 · obs-control · <span id="footer-year">2026</span></p>
+      <div data-i18n-switcher class="lang-switcher--obs" style="margin-top:18px;display:flex;justify-content:center"></div>
+      <p class="login-footer"><span data-i18n="obs.accessFooter">SYS::v2.1 · obs-control</span> · <span id="footer-year">2026</span></p>
     </div>
   </div>
 
@@ -64,14 +68,14 @@
           </svg>
         </span>
         <div class="brand-text">
-          <span class="brand-kicker">SYS//OBS-01</span>
-          <h1>Observatory</h1>
+          <span class="brand-kicker" data-i18n="obs.kicker">SYS//OBS-01</span>
+          <h1 data-i18n="obs.title">Observatory</h1>
         </div>
       </div>
       <div class="header-meta" aria-hidden="true">
         <span class="meta-cell" data-label="UPLINK">
           <span class="status-dot" id="status-dot"></span>
-          <span class="meta-value">LIVE</span>
+          <span class="meta-value" data-i18n="obs.live">LIVE</span>
         </span>
         <span class="meta-cell" data-label="LAST SYNC">
           <time id="updated-at" class="meta-value mono">--:--:--</time>
@@ -81,17 +85,18 @@
         </span>
       </div>
       <div class="header-actions">
+        <div data-i18n-switcher class="lang-switcher--obs"></div>
         <button id="refresh-btn" class="btn-icon" title="Re-sync">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
             <path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9v-3m-9-6a9 9 0 0 1 9-9m-9 9h3m6-9v3"/>
           </svg>
-          <span class="btn-icon-label">SYNC</span>
+          <span class="btn-icon-label" data-i18n="obs.sync">SYNC</span>
         </button>
         <button class="btn-icon" onclick="exportData('csv')" title="Exfil CSV">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
           </svg>
-          <span class="btn-icon-label">EXFIL</span>
+          <span class="btn-icon-label" data-i18n="obs.exfil">EXFIL</span>
         </button>
       </div>
     </header>
@@ -100,7 +105,7 @@
     <nav class="tabs" role="tablist" aria-label="Canais de telemetria">
       <a href="#/overview" class="tab active" data-route="overview" role="tab" aria-selected="true">
         <span class="tab-code">[00]</span>
-        <span class="tab-label">Visão Geral</span>
+        <span class="tab-label" data-i18n="panels.visaoGeral">Visão Geral</span>
       </a>
       <div class="tab-divider"></div>
       <a href="#/datageoparana" class="tab" data-route="datageoparana" role="tab">
