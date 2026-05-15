@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Datageo · Painel de Controle">
+  <rect width="64" height="64" fill="#f1e9d6"/>
+  <rect x="2" y="2" width="60" height="60" fill="none" stroke="#14110c" stroke-width="1.2"/>
+  <g fill="none" stroke="#14110c" stroke-width="0.7" opacity="0.55">
+    <path d="M6 40 Q20 30 32 32 Q44 34 58 28"/>
+    <path d="M6 46 Q20 38 32 40 Q44 42 58 36"/>
+    <path d="M6 52 Q20 46 32 48 Q44 50 58 44"/>
+  </g>
+  <text x="32" y="40" text-anchor="middle" font-family="Fraunces, 'Times New Roman', Georgia, serif" font-style="italic" font-weight="500" font-size="34" fill="#14110c" letter-spacing="-1">Cp</text>
+  <circle cx="50" cy="14" r="2.4" fill="#a8482c"/>
+</svg>
