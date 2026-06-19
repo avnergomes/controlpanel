@@ -29,42 +29,42 @@
   // translated string.
   var ATTR_ORIG = 'data-i18n-orig';
 
-  // Whitelist: only walk inside these selectors. Conservative to avoid
-  // touching chart data, table cells with domain names, etc.
-  // Includes common React panel chrome + Atlas landing + Observatory.
-  var SELECTORS = [
-    'header', '.header', '.masthead',
-    '.tabs', '.tab', '.tab-label', '.tab-code',
-    'nav', '.nav', '.sidebar',
+  // Containers we walk EVERY text descendant of (deep). Use for sections
+  // with arbitrary nested chrome (footer columns, colophon, login card).
+  var DEEP_CONTAINERS = [
+    'header', '.header', '.masthead', '.masthead-foot', '.masthead-inner',
+    'nav', '.tabs', 'footer', '.site-footer', '.footer-col', '.footer-bottom',
+    '.colophon', '.colophon-body', '.colophon-aside', '.colophon-rule',
+    '.aside-block', '.aside-list',
+    '.login-overlay', '.login-card', '.login-header', '.login-form',
+    '.bug-modal', '.bug-dialog', '.bug-form',
+    '.lgpd-banner', '#lgpd-banner',
+    '.meta-strip', '.running-head', '.section', '.section-title', '.section-deck',
+    '.plate', '.plate-body', '.plate-stats', '.plate-end',
+    '.detail-panel',
+    '[data-i18n-translate]',
+  ];
+
+  // Specific element selectors translated as-is (direct text children only).
+  // Useful for elements where we don't want deep walking (e.g. buttons).
+  var SHALLOW = [
     'button', '.btn', '.btn-icon', '.btn-icon-label',
     'label', '.label-text', '.filter-label', '.filter-stats',
-    '.controls', '.filters',
+    '.tab-label', '.tab-code',
     'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-    '.panel-head', '.panel-desc', '.section-title', '.section-deck',
-    '.section-deck',
+    '.panel-head', '.panel-desc',
     '.kpi-label', '.kpi-sub',
     '.card h3', '.card h4', '.card-footer',
     '.access-label',
-    '.empty-state', '.empty-state p', '.empty-state-icon',
-    '.tz-legend', '.tz-legend-item',
-    '.heatmap-legend', '.heatmap-legend-label',
-    '.heatmap-day', '.heatmap-header',
+    '.tz-legend-item', '.heatmap-legend-label', '.heatmap-day', '.heatmap-header',
     '.toast',
-    '.detail-panel h2', '.detail-panel h3', '.detail-panel h4',
     '.insight',
     '.active-filter-badge', '.badge',
-    '.colofao', '.colophon', '.colophon-body', '.colophon-aside',
-    '.aside-label', '.aside-link',
-    '.site-footer', '.footer-col', '.footer-bottom',
-    '.bug-trigger', '.bug-modal', '.bug-dialog',
-    '.login-overlay', '.login-card', '.login-sub', '.login-footer',
+    '.aside-label', '.aside-link', '.aside-list li',
     '.lede', '.eyebrow', '.coords',
     '.plate-cat', '.plate-title', '.plate-desc', '.plate-arrow', '.plate-source',
-    '.plate-stats .stat-lbl', '.stat-lbl',
-    '.running-head', '.section',
-    '.meta-strip', '.meta-strip span',
+    '.stat-lbl',
     'option',
-    '[data-i18n-translate]',
   ];
 
   var WALK_ATTRS = ['placeholder', 'title', 'aria-label'];
@@ -90,27 +90,25 @@
       if (!raw) continue;
       var trimmed = raw.trim();
       if (!trimmed) continue;
-      // Remember original PT text so we can re-translate after switching.
       var orig = c.__i18nOrig || trimmed;
-      var lookup = map[orig];
-      if (lookup && lookup !== orig) {
-        // Preserve leading/trailing whitespace.
-        var lead = raw.match(/^\s*/)[0];
-        var trail = raw.match(/\s*$/)[0];
-        c.nodeValue = lead + lookup + trail;
-        c.__i18nOrig = orig;
+      var target = map[orig] || orig;
+      var lead = raw.match(/^\s*/)[0];
+      var trail = raw.match(/\s*$/)[0];
+      var nextValue = lead + target + trail;
+      if (c.nodeValue !== nextValue) {
+        c.nodeValue = nextValue;
+        if (!c.__i18nOrig) c.__i18nOrig = orig;
       }
     }
-    // Translate selected attrs.
+    // Translate selected attrs (placeholder, title, aria-label).
     for (var a = 0; a < WALK_ATTRS.length; a++) {
       var aname = WALK_ATTRS[a];
       if (!node.hasAttribute(aname)) continue;
       var v = node.getAttribute(aname);
       if (!v) continue;
-      var key = node.__i18nAttrOrig && node.__i18nAttrOrig[aname];
-      key = key || v.trim();
-      var t = map[key];
-      if (t && t !== key) {
+      var key = (node.__i18nAttrOrig && node.__i18nAttrOrig[aname]) || v.trim();
+      var t = map[key] || key;
+      if (node.getAttribute(aname) !== t) {
         node.setAttribute(aname, t);
         node.__i18nAttrOrig = node.__i18nAttrOrig || {};
         node.__i18nAttrOrig[aname] = key;
@@ -137,27 +135,95 @@
     });
   }
 
+  function walkDeep(container) {
+    // TreeWalker over every text node inside the container.
+    var map = getMap();
+    if (!map) return;
+    var walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
+    var node;
+    while ((node = walker.nextNode())) {
+      var raw = node.nodeValue;
+      if (!raw) continue;
+      var trimmed = raw.trim();
+      if (!trimmed) continue;
+      // Use cached PT canonical if we've translated this node before.
+      var orig = node.__i18nOrig || trimmed;
+      // Look up in target lang; fallback to PT canonical if no entry.
+      var target = map[orig] || orig;
+      var lead = raw.match(/^\s*/)[0];
+      var trail = raw.match(/\s*$/)[0];
+      var nextValue = lead + target + trail;
+      // Always restore the node to the correct lang value (so a stale
+      // translation from another lang doesn't linger).
+      if (node.nodeValue !== nextValue) {
+        node.nodeValue = nextValue;
+        if (!node.__i18nOrig) node.__i18nOrig = orig;
+      }
+    }
+  }
+
+  // Skip translation inside these elements — they contain chart geometry,
+  // SVG paths and other content that must not be rewritten by accident.
+  var SKIP_SUBTREES = ['script', 'style', 'svg', 'canvas', 'code', 'pre'];
+
+  function inSkippedSubtree(node) {
+    var p = node.parentNode;
+    while (p && p !== document.body) {
+      if (p.nodeType === 1) {
+        var tag = (p.tagName || '').toLowerCase();
+        if (SKIP_SUBTREES.indexOf(tag) !== -1) return true;
+        if (p.hasAttribute && p.hasAttribute('data-i18n-skip')) return true;
+      }
+      p = p.parentNode;
+    }
+    return false;
+  }
+
   function walk(root) {
     root = root || document.body;
     if (!root) return;
-    var lang = getLang();
-    if (lang === 'pt') {
+    var map = getMap();
+    if (!map) {
+      // pt — restore originals.
       restorePt(root);
       return;
     }
-    var sel = SELECTORS.join(',');
-    // Translate the root itself if it matches.
-    try {
-      if (root.matches && root.matches(sel)) translateOne(root);
-    } catch (e) {}
-    // Then all descendants matching the whitelist.
-    try {
-      root.querySelectorAll(sel).forEach(translateOne);
-    } catch (e) {}
-    // Always walk top-level elements with [data-i18n-translate].
-    try {
-      root.querySelectorAll('[data-i18n-translate]').forEach(translateOne);
-    } catch (e) {}
+    // TreeWalker over EVERY text node in the body. Strings not in the map
+    // fall back to their original (PT canonical), so the walker is safe to
+    // run over the entire document — only mapped strings change.
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+    var node;
+    while ((node = walker.nextNode())) {
+      var raw = node.nodeValue;
+      if (!raw) continue;
+      var trimmed = raw.trim();
+      if (!trimmed) continue;
+      if (inSkippedSubtree(node)) continue;
+      var orig = node.__i18nOrig || trimmed;
+      var target = map[orig] || orig;
+      var lead = raw.match(/^\s*/)[0];
+      var trail = raw.match(/\s*$/)[0];
+      var nextValue = lead + target + trail;
+      if (node.nodeValue !== nextValue) {
+        node.nodeValue = nextValue;
+        if (!node.__i18nOrig) node.__i18nOrig = orig;
+      }
+    }
+    // Translate placeholder / title / aria-label / alt on all elements.
+    root.querySelectorAll('[placeholder],[title],[aria-label]').forEach(function (el) {
+      ['placeholder', 'title', 'aria-label'].forEach(function (aname) {
+        if (!el.hasAttribute(aname)) return;
+        var v = el.getAttribute(aname);
+        if (!v) return;
+        var key = (el.__i18nAttrOrig && el.__i18nAttrOrig[aname]) || v.trim();
+        var t = map[key] || key;
+        if (el.getAttribute(aname) !== t) {
+          el.setAttribute(aname, t);
+          el.__i18nAttrOrig = el.__i18nAttrOrig || {};
+          el.__i18nAttrOrig[aname] = key;
+        }
+      });
+    });
   }
 
   // Debounced re-walk on DOM mutations (React re-renders).
