@@ -24,6 +24,7 @@ const CONFIG = {
     { key: "c2-parana", name: "C2 Parana", kind: "c2parana" },
     { key: "cwbtopo", name: "CWB Topografia", kind: "cwbtopo" },
     { key: "dayane-psicologia", name: "Dayane Psicologia", kind: "psicologia" },
+    { key: "d3d", name: "D3D Inovacao", kind: "d3d" },
   ],
 };
 
@@ -391,6 +392,34 @@ const FIELD_SCHEMAS = {
     screenOrientation: ["screenOrientation", "Screen Orientation"],
     prefersColorScheme: ["prefersColorScheme", "Prefers Color Scheme", "colorScheme"],
   },
+  d3d: {
+    timestamp: ["timestamp", "Timestamp"],
+    url: ["page", "URL", "url"],
+    path: ["pathname", "Pathname"],
+    referrer: ["referrer", "Referrer"],
+    timezone: ["timezone", "Timezone"],
+    sessionId: [],
+    userAgent: [],
+    os: [],
+    browser: [],
+    deviceType: ["deviceType", "Device Type", "Dispositivo"],
+    language: ["language", "Language"],
+    screenWidth: [],
+    screenHeight: [],
+    connectionType: ["connectionType", "Connection Type"],
+    loadTime: ["loadTime", "LoadTime", "Load Time"],
+    firstContentfulPaint: [],
+    domInteractiveTime: [],
+    isMobile: [],
+    utmSource: ["utmSource", "UTM Source"],
+    utmMedium: ["utmMedium", "UTM Medium"],
+    utmCampaign: ["utmCampaign", "UTM Campaign"],
+    utmTerm: ["utmTerm", "UTM Term"],
+    utmContent: ["utmContent", "UTM Content"],
+    pageTitle: ["pageTitle", "Page Title", "title", "Title"],
+    screenOrientation: ["screenOrientation", "Screen Orientation"],
+    prefersColorScheme: ["prefersColorScheme", "Prefers Color Scheme", "colorScheme"],
+  },
 };
 
 // Returning visitor field variations
@@ -456,8 +485,9 @@ const CHART_COLORS = {
     "#f97316", // C2 Parana - Laranja (command & control)
     "#d97706", // CWB Topografia - Amber escuro
     "#84a98c", // Dayane Psicologia - Verde salvia (sage)
+    "#fb7185", // D3D Inovacao - Rosa coral
   ],
-  doughnut: ["#10b981", "#f59e0b", "#3b82f6", "#a855f7", "#ef4444", "#06b6d4", "#ec4899", "#8b5cf6", "#0369a1", "#14b8a6", "#475569", "#f97316", "#d97706", "#84a98c"],
+  doughnut: ["#10b981", "#f59e0b", "#3b82f6", "#a855f7", "#ef4444", "#06b6d4", "#ec4899", "#8b5cf6", "#0369a1", "#14b8a6", "#475569", "#f97316", "#d97706", "#84a98c", "#fb7185"],
   heatmap: {
     min: "rgba(45, 212, 191, 0.1)",
     max: "rgba(255, 122, 24, 0.9)",
@@ -481,6 +511,7 @@ const SITE_COLORS = {
   "c2-parana": "#f97316",
   "cwbtopo": "#d97706",
   "dayane-psicologia": "#84a98c",
+  "d3d": "#fb7185",
 };
 
 // Days of week in Portuguese
