@@ -11,7 +11,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "check": "npm run test && npm run test:e2e"
+    "check": "npm run test && npm run test:e2e",
+    "gas:pull": "clasp pull",
+    "gas:push": "clasp push -f",
+    "gas:deploy": "clasp deploy -i AKfycbwdSLK3K9_D39sc0UfzYZIM1QEMLxMUudSneAELoqcJjM5ExTSq7ZmMilNzYDx5QK5iMA -d v3",
+    "gas:health": "curl -sL \"https://script.google.com/macros/s/AKfycbwdSLK3K9_D39sc0UfzYZIM1QEMLxMUudSneAELoqcJjM5ExTSq7ZmMilNzYDx5QK5iMA/exec?action=health\""
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",

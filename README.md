@@ -55,13 +55,14 @@ O workflow `.github/workflows/deploy.yml` roda os testes antes de publicar e sob
 
 ## Backend (Google Apps Script)
 
-O arquivo versionado é `server/proxy.gs` (v3). Ele mantém o contrato do v2, então o cliente
-funciona com qualquer um dos dois. Ganhos do v3: cache em blocos (o v2 nunca cacheava),
-formato colunar, busca incremental (`since`), sessão deslizante, relay do GitHub com token
-opcional e o site D3D. Segredos ficam em *Script Properties* (`PASSWORD_HASH`,
-`PASSWORD_SALT` opcional, `GITHUB_TOKEN` opcional), nunca no código.
+O arquivo versionado é `server/proxy.gs` (v3, em produção desde 2026-09-05). Ele mantém o
+contrato do v2, então o cliente funciona com qualquer um dos dois. Ganhos do v3: cache em blocos
+(o v2 nunca cacheava), formato colunar, busca incremental (`since`), sessão deslizante, criação
+automática de planilha para sites novos e o auth gate de cadastro do datageoparana.github.io.
+Segredos ficam fora do git: `server/secrets.gs` (ignorado) ou *Script Properties*
+(`PASSWORD_HASH`, `PASSWORD_SALT` opcional).
 
-Passo a passo de publicação: cabeçalho de `server/proxy.gs`.
+Publicação com clasp (`npm run gas:push` e `npm run gas:deploy`): ver `MIGRATION_NOTES.md`.
 
 ## Segurança e LGPD
 

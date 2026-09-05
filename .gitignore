@@ -52,6 +52,8 @@ CLAUDE.md
 .omc/
 
 # Repo-specific
+server/secrets.gs
+.clasprc.json
 sheets.txt
 *.tmp
 *.temp

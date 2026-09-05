@@ -4,24 +4,25 @@
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * Backward compatible with the v2 client and the v2 tracking snippet. New in v3:
- *   - Secrets live in Script Properties (PASSWORD_HASH, GITHUB_TOKEN optional),
- *     so this file can be versioned without leaking credentials.
+ *   - Secrets live outside this file: Script Properties (PASSWORD_HASH, optional
+ *     PASSWORD_SALT) or the untracked secrets.gs (SECRETS object) pushed by clasp.
  *   - Chunked CacheService storage: the full payload is cached even when it is
  *     larger than the 100 KB per-key limit (v2 effectively never cached).
  *   - Columnar format ({headers, values}) when the client sends format:"columnar"
  *     (≈45% smaller than row objects).
  *   - Delta fetch: `since` (ISO timestamp) returns only newer rows + delta:true.
- *   - GitHub relay (action:"github") with optional token, cached 10 min.
- *   - D3D Inovação added to SITES. Legacy query-string token removed.
+ *   - Sites without a spreadsheet id get one created on first use (id persisted
+ *     in Script Properties as SHEET_ID_<key>), e.g. D3D Inovação.
+ *   - Sliding sessions, rate limit keyed by origin, legacy query-string token removed.
+ *   - Same OAuth scopes as v2 (Spreadsheets only), so redeploying needs no re-consent.
  *
- * INSTALL
- *   1. Apps Script editor → paste this file over the old code.
- *   2. Project Settings → Script Properties:
- *        PASSWORD_HASH  = <sha256 hex of the admin password> (copy from the old file)
- *        GITHUB_TOKEN   = <optional fine-grained PAT, read-only public repos>
- *   3. Deploy → Manage deployments → Edit → New version → Deploy
- *      (keep the same deployment so the URL does not change).
- *   4. Run setupAllSheets() once if a new site was added.
+ * DEPLOY (clasp, from the repo root)
+ *   npm run gas:push      # uploads server/*.gs + appsscript.json
+ *   npm run gas:deploy    # new version on the existing deployment (URL unchanged)
+ *   curl "<url>?action=health"  → {"status":"ok","version":"3.0",...}
+ *
+ * Or manually: Apps Script editor → paste this file and secrets.gs → Deploy →
+ * Manage deployments → Edit → New version → Deploy.
  */
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -32,7 +33,6 @@ var VERSION = '3.0';
 var SESSION_DURATION_SECONDS = 3600;   // 1 h
 var RATE_LIMIT_PER_MINUTE = 60;        // tracking hits per origin per minute
 var DATA_CACHE_SECONDS = 180;          // proxy payload cache
-var GITHUB_CACHE_SECONDS = 600;        // GitHub relay cache
 var CHUNK_SIZE = 90000;                // CacheService max is 100 KB per key
 
 var SITES = [
@@ -51,8 +51,9 @@ var SITES = [
   { key: 'cwbtopo',              urlKey: 'cwbtopo.github.io',                    name: 'CWB Topografia',       sheetId: '1Owf1vtDOOYnTa8tIAwbJze6gucviOmqWp5NBRftg1g8', gids: [0],                   trackingSheet: 'Tracking LGPD', kind: 'cwbtopo' },
   { key: 'c2-parana',            urlKey: 'avnergomes.github.io/c2-parana',       name: 'C2 Parana',            sheetId: '1ggmbcGUTv5gw3i2VCDckEF-Yv2qtWSg8oZk66HA-FZ0', gids: [0],                   trackingSheet: 'Tracking LGPD', kind: 'c2parana' },
   { key: 'dayane-psicologia',    urlKey: 'dayanebuenogomes.github.io',           name: 'Dayane Psicologia',    sheetId: '1fWQcaXf8ttidVwMWcFPIBYFVJd5553o0OjrZw4MQ2WA', gids: [0],                   trackingSheet: 'Tracking LGPD', kind: 'psicologia' },
-  // TODO(avner): create the spreadsheet for D3D and paste its id here, then run setupAllSheets().
-  { key: 'd3d',                  urlKey: 'd3dinovacao.github.io',                name: 'D3D Inovacao',         sheetId: '',                                             gids: [],                    trackingSheet: 'Tracking LGPD', kind: 'd3d' },
+  { key: 'd3d',                  urlKey: 'd3dinovacao.github.io',                name: 'D3D Inovacao',         sheetId: '1TuFhB-su6XFJTP5EXNwFKucQ8zVFR7UZt5wXM0LYh3E', gids: [],                    trackingSheet: 'Tracking LGPD', kind: 'd3d' },
+  // New sites may leave sheetId empty: a spreadsheet is created on first use and its id
+  // persisted in Script Properties as SHEET_ID_<key>.
 ];
 
 var ALLOWED_ORIGINS = [
@@ -64,8 +65,6 @@ var ALLOWED_ORIGINS = [
   'http://localhost',
   'http://127.0.0.1',
 ];
-
-var GITHUB_ACCOUNTS = ['avnergomes', 'datageoparana', 'cwbtopo', 'dayanebuenogomes', 'd3dinovacao'];
 
 // LGPD-compliant anonymous columns (19).
 var TRACKING_COLUMNS = [
@@ -83,8 +82,38 @@ var TRACKING_SHEET_NAMES = ['Tracking LGPD', 'Tracking Data', 'Visits', 'Analyti
 // SECRETS + AUTH
 // ═══════════════════════════════════════════════════════════════════════════
 
+// Script Properties first; falls back to the untracked secrets.gs (var SECRETS = {...}).
 function prop_(name) {
-  return PropertiesService.getScriptProperties().getProperty(name) || '';
+  var value = PropertiesService.getScriptProperties().getProperty(name);
+  if (value) return value;
+  if (typeof SECRETS !== 'undefined' && SECRETS && SECRETS[name]) return String(SECRETS[name]);
+  return '';
+}
+
+function setProp_(name, value) {
+  PropertiesService.getScriptProperties().setProperty(name, String(value));
+}
+
+// Spreadsheet id for a site: configured, or persisted, or created now (owner's Drive).
+function resolveSheetId_(site) {
+  if (site.sheetId) return site.sheetId;
+  var key = 'SHEET_ID_' + site.key;
+  var stored = prop_(key);
+  if (stored) return stored;
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    stored = prop_(key);
+    if (stored) return stored;
+    var ss = SpreadsheetApp.create('Tracking ' + site.name);
+    var sheet = ss.getSheets()[0];
+    sheet.setName(site.trackingSheet);
+    setupTrackingHeaders_(sheet);
+    setProp_(key, ss.getId());
+    return ss.getId();
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function hashPassword_(password) {
@@ -162,6 +191,8 @@ function cacheGetLarge_(key) {
 
 function doGet(e) {
   var action = (e && e.parameter && e.parameter.action) || '';
+  // Auth gate of datageoparana.github.io (signup status lookup).
+  if (action === 'check') return authCheckAccess_(e.parameter);
   if (action === 'health') {
     return jsonResponse_({ status: 'ok', version: VERSION, sites: SITES.length, cached: !!CacheService.getScriptCache().get('proxy_all_n') });
   }
@@ -193,11 +224,6 @@ function doPost(e) {
     if (data.action === 'getData') {
       if (!validateSession_(data.token)) return jsonResponse_({ error: 'unauthorized', message: 'Sessao invalida ou expirada' });
       return jsonResponse_(buildDataResponse_(data));
-    }
-
-    if (data.action === 'github') {
-      if (!validateSession_(data.token)) return jsonResponse_({ error: 'unauthorized' });
-      return jsonResponse_(fetchGithub_());
     }
 
     return handleTracking_(data);
@@ -265,10 +291,6 @@ function readAllSitesCached_() {
     var result = { fetchedAt: new Date().toISOString(), sites: {} };
     for (var i = 0; i < SITES.length; i++) {
       var site = SITES[i];
-      if (!site.sheetId) {
-        result.sites[site.key] = { name: site.name, kind: site.kind, rows: [], status: 'error', error: 'sheetId not configured' };
-        continue;
-      }
       try {
         result.sites[site.key] = { name: site.name, kind: site.kind, rows: readSiteRows_(site), status: 'ok' };
       } catch (err) {
@@ -284,7 +306,7 @@ function readAllSitesCached_() {
 
 function readSiteRows_(site) {
   var allRows = [];
-  var ss = SpreadsheetApp.openById(site.sheetId);
+  var ss = SpreadsheetApp.openById(resolveSheetId_(site));
   var readSheetNames = {};
   for (var g = 0; g < site.gids.length; g++) {
     var sheet = getSheetByGid_(ss, site.gids[g]);
@@ -340,45 +362,6 @@ function getSheetByGid_(spreadsheet, gid) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// GITHUB RELAY (optional token keeps the panel off the 60/h anonymous limit)
-// ═══════════════════════════════════════════════════════════════════════════
-
-function fetchGithub_() {
-  var cached = cacheGetLarge_('github_all');
-  if (cached) {
-    try { return JSON.parse(cached); } catch (err) { /* refetch */ }
-  }
-  var token = prop_('GITHUB_TOKEN');
-  var headers = { Accept: 'application/vnd.github+json', 'User-Agent': 'observatory-proxy' };
-  if (token) headers.Authorization = 'Bearer ' + token;
-  var repos = [];
-  var accounts = [];
-  var remaining = null;
-  for (var i = 0; i < GITHUB_ACCOUNTS.length; i++) {
-    var account = GITHUB_ACCOUNTS[i];
-    var response = UrlFetchApp.fetch('https://api.github.com/users/' + account + '/repos?per_page=100&sort=pushed', { headers: headers, muteHttpExceptions: true });
-    var rem = response.getHeaders()['x-ratelimit-remaining'];
-    if (rem !== undefined) remaining = remaining === null ? Number(rem) : Math.min(remaining, Number(rem));
-    if (response.getResponseCode() !== 200) { accounts.push({ account: account, count: 0, error: response.getResponseCode() }); continue; }
-    var list = JSON.parse(response.getContentText());
-    accounts.push({ account: account, count: list.length });
-    for (var j = 0; j < list.length; j++) repos.push(compactRepo_(list[j]));
-  }
-  var result = { fetchedAt: new Date().toISOString(), authenticated: !!token, accounts: accounts, repos: repos, remaining: remaining };
-  try { cachePutLarge_('github_all', JSON.stringify(result), GITHUB_CACHE_SECONDS); } catch (err) { /* ignore */ }
-  return result;
-}
-
-function compactRepo_(repo) {
-  return {
-    fullName: repo.full_name, name: repo.name, owner: repo.owner && repo.owner.login, description: repo.description || '',
-    language: repo.language || '', stars: repo.stargazers_count || 0, forks: repo.forks_count || 0, openIssues: repo.open_issues_count || 0,
-    hasPages: !!repo.has_pages, archived: !!repo.archived, fork: !!repo.fork, pushedAt: repo.pushed_at, updatedAt: repo.updated_at,
-    createdAt: repo.created_at, htmlUrl: repo.html_url, homepage: repo.homepage || '', size: repo.size || 0, defaultBranch: repo.default_branch || 'main',
-  };
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
 // TRACKING (sites POST anonymous pageviews)
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -386,9 +369,10 @@ function handleTracking_(data) {
   var origin = data.origin || '';
   if (!isAllowedOrigin_(origin)) return jsonResponse_({ status: 'error', message: 'forbidden origin' });
   if (!checkRateLimit_(origin)) return jsonResponse_({ status: 'error', message: 'rate limited' });
+  // Signup of the datageoparana.github.io auth gate shares this endpoint.
+  if (data.page === 'cadastro') return authSaveSignup_(data);
   var site = identifySite_(data);
   if (!site) return jsonResponse_({ status: 'error', message: 'unknown site' });
-  if (!site.sheetId) return jsonResponse_({ status: 'error', message: 'site without spreadsheet' });
   data.site = site.name;
   saveTracking_(site, data);
   return jsonResponse_({ status: 'success', site: site.name, campos: TRACKING_COLUMNS.length });
@@ -412,7 +396,7 @@ function identifySite_(data) {
 }
 
 function saveTracking_(site, data) {
-  var ss = SpreadsheetApp.openById(site.sheetId);
+  var ss = SpreadsheetApp.openById(resolveSheetId_(site));
   var sheet = ss.getSheetByName(site.trackingSheet);
   if (!sheet) {
     sheet = ss.insertSheet(site.trackingSheet);
@@ -468,6 +452,7 @@ function validatePayload_(raw) {
 
 function sanitize_(value) {
   if (value === null || value === undefined) return '';
+  if (typeof value === 'number') return value; // keep negatives intact (timezoneOffset)
   var str = String(value).substring(0, 500).replace(/[<>"'\\]/g, '');
   if (/^[=+\-@\t\r]/.test(str)) str = "'" + str; // formula injection
   return str;
@@ -485,9 +470,8 @@ function setupAllSheets() {
   var results = [];
   for (var i = 0; i < SITES.length; i++) {
     var site = SITES[i];
-    if (!site.sheetId) { results.push({ site: site.name, status: 'skipped (no sheetId)' }); continue; }
     try {
-      var ss = SpreadsheetApp.openById(site.sheetId);
+      var ss = SpreadsheetApp.openById(resolveSheetId_(site));
       var existing = ss.getSheetByName(site.trackingSheet);
       if (existing) {
         results.push({ site: site.name, status: 'ok', rows: existing.getLastRow() - 1 });
@@ -505,8 +489,8 @@ function setupAllSheets() {
 
 function clearProxyCache() {
   var cache = CacheService.getScriptCache();
-  var keys = ['proxy_all_n', 'github_all_n'];
-  for (var i = 0; i < 50; i++) { keys.push('proxy_all_' + i); keys.push('github_all_' + i); }
+  var keys = ['proxy_all_n'];
+  for (var i = 0; i < 50; i++) keys.push('proxy_all_' + i);
   cache.removeAll(keys);
 }
 
@@ -514,5 +498,256 @@ function clearProxyCache() {
 function printPasswordHash() {
   var password = prop_('PASSWORD_PLAIN_TMP');
   if (!password) { Logger.log('Set PASSWORD_PLAIN_TMP temporarily in Script Properties, run again, then delete it.'); return; }
-  Logger.log(hashPassword_(password));
+  Logger.log(hashPassword_(prop_('PASSWORD_SALT') + password));
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+ *  AUTH GATE — Cadastro de acesso ao Datageo Parana (kept verbatim from v42)
+ * ════════════════════════════════════════════════════════════════════════
+ *  Used by datageoparana.github.io (auth.js / dashboard-gate.js):
+ *  - GET  ?action=check&email=...  → {status: approved|pending|denied|not_found|invalid|trial_expired}
+ *  - POST {page: 'cadastro', email, name, organization, phone, reason} → creates the signup row
+ *  - approveEmail(email) / denyEmail(email) / setupSignupSheet() run manually in the editor.
+ */
+
+var SIGNUP_SPREADSHEET_ID = '1UIhobwGjfmAoPY6COppYsp_sNcfCSjANH6RiPZcJTMY';
+var SIGNUP_SHEET_NAME = 'Cadastros';
+var SIGNUP_NOTIFY_EMAIL = 'avnerpaesgomes@gmail.com';
+var SIGNUP_ALWAYS_APPROVED = ['avnerpaesgomes@gmail.com'];
+
+var SIGNUP_STATUS_PENDING = 'PENDENTE';
+var SIGNUP_STATUS_APPROVED = 'APROVADO';
+var SIGNUP_STATUS_DENIED = 'NEGADO';
+
+// Trial gratuito concedido automaticamente no cadastro
+var SIGNUP_TRIAL_DAYS = 30;
+var SIGNUP_TRIAL_TAG = 'auto-trial';
+
+var SIGNUP_COLUMNS = [
+  'Email',
+  'Nome',
+  'Empresa/Instituicao',
+  'Telefone',
+  'Motivo do acesso',
+  'Status',
+  'Data Cadastro',
+  'Data Aprovacao',
+  'Aprovado por',
+  'Session ID',
+  'Hostname',
+  'Origin',
+  'Trial Expira Em',
+  'Plano'
+];
+
+function authCheckAccess_(params) {
+  var email = String((params && params.email) || '').toLowerCase().trim();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return jsonResponse_({ status: 'invalid', message: 'email invalido' });
+  }
+  for (var i = 0; i < SIGNUP_ALWAYS_APPROVED.length; i++) {
+    if (SIGNUP_ALWAYS_APPROVED[i].toLowerCase() === email) {
+      return jsonResponse_({ status: 'approved', source: 'always_approved', plan: 'paid' });
+    }
+  }
+  var sheet = getSignupSheet_();
+  if (!sheet) return jsonResponse_({ status: 'not_found' });
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return jsonResponse_({ status: 'not_found' });
+  var values = sheet.getRange(2, 1, lastRow - 1, SIGNUP_COLUMNS.length).getValues();
+  for (var r = 0; r < values.length; r++) {
+    var rowEmail = String(values[r][0] || '').toLowerCase().trim();
+    if (rowEmail === email) {
+      var raw = String(values[r][5] || '').toUpperCase().trim();
+      if (raw === SIGNUP_STATUS_DENIED) return jsonResponse_({ status: 'denied' });
+      if (raw === SIGNUP_STATUS_APPROVED) {
+        var approver = String(values[r][8] || '').toLowerCase().trim();
+        var trialRaw = values[r][12];
+        var plan = String(values[r][13] || '').toLowerCase().trim();
+        var trialIso = '';
+        if (trialRaw) {
+          try {
+            trialIso = (trialRaw instanceof Date)
+              ? trialRaw.toISOString()
+              : new Date(trialRaw).toISOString();
+          } catch (e) { trialIso = ''; }
+        }
+        var isTrial = (plan === 'trial') || (approver === SIGNUP_TRIAL_TAG);
+        if (isTrial && trialIso) {
+          if (new Date(trialIso).getTime() < Date.now()) {
+            return jsonResponse_({ status: 'trial_expired', trialExpiresAt: trialIso, plan: 'trial' });
+          }
+          return jsonResponse_({ status: 'approved', plan: 'trial', trialExpiresAt: trialIso });
+        }
+        return jsonResponse_({ status: 'approved', plan: plan || 'paid' });
+      }
+      return jsonResponse_({ status: 'pending' });
+    }
+  }
+  return jsonResponse_({ status: 'not_found' });
+}
+
+function authSaveSignup_(data) {
+  var email = String((data && data.email) || '').toLowerCase().trim();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return jsonResponse_({ status: 'error', message: 'email invalido' });
+  }
+  var sheet = getSignupSheet_(true);
+  if (!sheet) return jsonResponse_({ status: 'error', message: 'planilha indisponivel' });
+
+  var lastRow = sheet.getLastRow();
+  if (lastRow >= 2) {
+    var existing = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    for (var i = 0; i < existing.length; i++) {
+      if (String(existing[i][0] || '').toLowerCase().trim() === email) {
+        return jsonResponse_({ status: 'ok', message: 'cadastro ja existe', duplicate: true });
+      }
+    }
+  }
+
+  var now = new Date();
+  var trialUntil = new Date(now.getTime() + SIGNUP_TRIAL_DAYS * 24 * 60 * 60 * 1000);
+
+  var row = [
+    email,
+    sanitizeAuth_(data.name),
+    sanitizeAuth_(data.organization),
+    sanitizeAuth_(data.phone),
+    sanitizeAuth_(data.reason),
+    SIGNUP_STATUS_APPROVED,
+    data.timestamp || now.toISOString(),
+    now.toISOString(),
+    SIGNUP_TRIAL_TAG,
+    sanitizeAuth_(data.sessionId),
+    sanitizeAuth_(data.hostname),
+    sanitizeAuth_(data.origin),
+    trialUntil.toISOString(),
+    'trial'
+  ];
+  var nextRow = sheet.getLastRow() + 1;
+  sheet.getRange(nextRow, 1, 1, row.length).setValues([row]);
+
+  try {
+    if (SIGNUP_NOTIFY_EMAIL) {
+      var subject = '[Datageo Paraná] Novo cadastro: ' + email;
+      var body = 'Novo cadastro no Datageo Paraná\n\n' +
+        'Nome: ' + (data.name || '-') + '\n' +
+        'Email: ' + email + '\n' +
+        'Empresa: ' + (data.organization || '-') + '\n' +
+        'Telefone: ' + (data.phone || '-') + '\n' +
+        'Motivo: ' + (data.reason || '-') + '\n\n' +
+        'Acesso liberado automaticamente (grátis vitalício).';
+      MailApp.sendEmail(SIGNUP_NOTIFY_EMAIL, subject, body);
+    }
+  } catch (notifyErr) {}
+
+  try {
+    MailApp.sendEmail(
+      email,
+      '[Datageo Paraná] Cadastro confirmado',
+      'Olá!\n\n' +
+      'Seu cadastro no Datageo Paraná foi confirmado e você já tem acesso completo aos painéis.\n\n' +
+      'O Datageo Paraná é gratuito e o código é aberto: você pode usar, estudar e contribuir à vontade. Não há cobranças, planos ou limites de tempo.\n\n' +
+      'Acesse a qualquer momento em https://datageoparana.github.io/\n\n' +
+      'Equipe Datageo Paraná'
+    );
+  } catch (mailErr) {}
+
+  return jsonResponse_({ status: 'ok', message: 'trial de 30 dias liberado', trialExpiresAt: trialUntil.toISOString() });
+}
+
+function sanitizeAuth_(value) {
+  if (value === null || value === undefined) return '';
+  return String(value).slice(0, 500);
+}
+
+function getSignupSheet_(createIfMissing) {
+  try {
+    var ss = SpreadsheetApp.openById(SIGNUP_SPREADSHEET_ID);
+    var sheet = ss.getSheetByName(SIGNUP_SHEET_NAME);
+    if (!sheet && createIfMissing) sheet = createSignupSheet_(ss);
+    return sheet;
+  } catch (err) {
+    return null;
+  }
+}
+
+function createSignupSheet_(spreadsheet) {
+  var sheet = spreadsheet.insertSheet(SIGNUP_SHEET_NAME);
+  sheet.getRange(1, 1, 1, SIGNUP_COLUMNS.length).setValues([SIGNUP_COLUMNS]);
+  var header = sheet.getRange(1, 1, 1, SIGNUP_COLUMNS.length);
+  header.setFontWeight('bold');
+  header.setBackground('#0f766e');
+  header.setFontColor('#FFFFFF');
+  header.setVerticalAlignment('middle');
+  sheet.setFrozenRows(1);
+
+  var statusRange = sheet.getRange(2, 6, sheet.getMaxRows() - 1, 1);
+  var rule = SpreadsheetApp.newDataValidation()
+    .requireValueInList([SIGNUP_STATUS_PENDING, SIGNUP_STATUS_APPROVED, SIGNUP_STATUS_DENIED], true)
+    .setAllowInvalid(false)
+    .build();
+  statusRange.setDataValidation(rule);
+
+  sheet.setColumnWidth(1, 260);
+  sheet.setColumnWidth(2, 200);
+  sheet.setColumnWidth(3, 220);
+  sheet.setColumnWidth(4, 150);
+  sheet.setColumnWidth(5, 320);
+  sheet.setColumnWidth(6, 120);
+  sheet.setColumnWidth(7, 180);
+  sheet.setColumnWidth(8, 180);
+  sheet.setColumnWidth(9, 200);
+  sheet.setColumnWidth(10, 220);
+  sheet.setColumnWidth(11, 200);
+  sheet.setColumnWidth(12, 220);
+  sheet.setColumnWidth(13, 200); // Trial Expira Em
+  sheet.setColumnWidth(14, 120); // Plano
+  return sheet;
+}
+
+function approveEmail(email) {
+  setSignupStatus_(email, SIGNUP_STATUS_APPROVED);
+}
+
+function denyEmail(email) {
+  setSignupStatus_(email, SIGNUP_STATUS_DENIED);
+}
+
+function setSignupStatus_(email, newStatus) {
+  if (!email) throw new Error('email vazio');
+  var normalized = String(email).toLowerCase().trim();
+  var sheet = getSignupSheet_();
+  if (!sheet) throw new Error('aba ' + SIGNUP_SHEET_NAME + ' nao encontrada');
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) throw new Error('nenhum cadastro encontrado');
+  var values = sheet.getRange(2, 1, lastRow - 1, SIGNUP_COLUMNS.length).getValues();
+  for (var r = 0; r < values.length; r++) {
+    if (String(values[r][0] || '').toLowerCase().trim() === normalized) {
+      var rowIndex = r + 2;
+      sheet.getRange(rowIndex, 6).setValue(newStatus);
+      sheet.getRange(rowIndex, 8).setValue(new Date().toISOString());
+      sheet.getRange(rowIndex, 9).setValue((Session.getActiveUser().getEmail() || 'admin'));
+      if (newStatus === SIGNUP_STATUS_APPROVED) {
+        try {
+          MailApp.sendEmail(
+            normalized,
+            '[Datageo Paraná] Acesso aprovado',
+            'Olá!\n\nSeu acesso ao Datageo Paraná foi aprovado.\n' +
+            'Acesse https://datageoparana.github.io/ e entre com este email.\n\n' +
+            'Equipe Datageo Paraná'
+          );
+        } catch (mailErr) {}
+      }
+      return;
+    }
+  }
+  throw new Error('email nao encontrado nos cadastros: ' + email);
+}
+
+function setupSignupSheet() {
+  var ss = SpreadsheetApp.openById(SIGNUP_SPREADSHEET_ID);
+  var existing = ss.getSheetByName(SIGNUP_SHEET_NAME);
+  if (existing) ss.deleteSheet(existing);
+  createSignupSheet_(ss);
 }
