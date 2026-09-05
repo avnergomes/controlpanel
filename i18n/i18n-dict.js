@@ -138,7 +138,7 @@ window.__I18N__ = {
       accessGate: "⊹ PORTÃO DE ACESSO / RESTRITO",
       access: "Iniciar Sessão",
       accessLabel: "Senha de acesso",
-      accessFooter: "SYS::v2.1 · obs-control",
+      accessFooter: "SYS::v3.0 · obs-control",
       accessDescription: "Telemetria do ecossistema datageoparaná. Autorização necessária.",
     },
     lang: {
@@ -284,7 +284,7 @@ window.__I18N__ = {
       accessGate: "⊹ ACCESS GATE / RESTRICTED",
       access: "Start Session",
       accessLabel: "Access password",
-      accessFooter: "SYS::v2.1 · obs-control",
+      accessFooter: "SYS::v3.0 · obs-control",
       accessDescription: "Telemetry for the datageoparaná ecosystem. Authorisation required.",
     },
     lang: {
@@ -430,7 +430,7 @@ window.__I18N__ = {
       accessGate: "⊹ PUERTA DE ACCESO / RESTRINGIDO",
       access: "Iniciar Sesión",
       accessLabel: "Contraseña de acceso",
-      accessFooter: "SYS::v2.1 · obs-control",
+      accessFooter: "SYS::v3.0 · obs-control",
       accessDescription: "Telemetría del ecosistema datageoparaná. Autorización requerida.",
     },
     lang: {
