@@ -179,15 +179,20 @@
     return false;
   }
 
+  // Set once any node has been translated; while false, PT walks are a no-op
+  // (no full-document querySelectorAll on every DOM mutation).
+  var everTranslated = false;
+
   function walk(root) {
     root = root || document.body;
     if (!root) return;
     var map = getMap();
     if (!map) {
-      // pt — restore originals.
-      restorePt(root);
+      // pt — restore originals, but only if something was translated before.
+      if (everTranslated) restorePt(root);
       return;
     }
+    everTranslated = true;
     // TreeWalker over EVERY text node in the body. Strings not in the map
     // fall back to their original (PT canonical), so the walker is safe to
     // run over the entire document — only mapped strings change.
@@ -241,13 +246,15 @@
     walk();
     if (typeof MutationObserver === 'function') {
       var obs = new MutationObserver(function (records) {
-        // Only schedule if a relevant region changed.
+        // Only schedule if a relevant region changed. Mutations inside
+        // [data-i18n-skip] (clocks, data tables) never trigger a walk.
         for (var i = 0; i < records.length; i++) {
           var r = records[i];
-          if (r.type === 'characterData' || r.addedNodes.length) {
-            schedule();
-            return;
-          }
+          if (r.type !== 'characterData' && !r.addedNodes.length) continue;
+          var t = r.target && r.target.nodeType === 1 ? r.target : (r.target && r.target.parentNode);
+          if (t && t.closest && t.closest('[data-i18n-skip]')) continue;
+          schedule();
+          return;
         }
       });
       obs.observe(document.body, {

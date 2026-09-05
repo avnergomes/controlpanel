@@ -1,0 +1,20 @@
+{
+  "name": "controlpanel",
+  "version": "3.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Observatory: painel de telemetria (pageviews anonimos, LGPD) dos sites do ecossistema Datageo Parana e projetos pessoais.",
+  "scripts": {
+    "dev": "node scripts/serve.mjs",
+    "build": "node scripts/build.mjs",
+    "build:world": "py -3 scripts/build_world_paths.py",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "check": "npm run test && npm run test:e2e"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "vitest": "^3.2.4"
+  }
+}

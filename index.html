@@ -3,10 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' fonts.googleapis.com; font-src fonts.gstatic.com; connect-src 'self' script.google.com script.googleusercontent.com cdn.jsdelivr.net; img-src 'self' data:;">
-  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://api.github.com; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
-  <title>OBSERVATORY ⊹ Control Panel</title>
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#06070d">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Observatory · Control Panel</title>
+  <meta name="description" content="Telemetria anônima (LGPD) dos sites do ecossistema Datageo Paraná e projetos pessoais.">
+  <meta property="og:title" content="Observatory · Control Panel">
   <meta property="og:image" content="https://avnergomes.github.io/controlpanel/og-image.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -16,358 +20,415 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600&family=JetBrains+Mono:wght@400;500;600&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="i18n/i18n-switcher.css">
+
+  <link rel="modulepreload" href="src/main.js">
+  <link rel="modulepreload" href="src/config.js">
+  <link rel="modulepreload" href="src/sites.js">
+  <link rel="modulepreload" href="src/schemas.js">
+  <link rel="modulepreload" href="src/geo.js">
+  <link rel="modulepreload" href="src/format.js">
+  <link rel="modulepreload" href="src/normalize.js">
+  <link rel="modulepreload" href="src/analytics.js">
+  <link rel="modulepreload" href="src/store.js">
+  <link rel="modulepreload" href="src/cache.js">
+  <link rel="modulepreload" href="src/api.js">
+  <link rel="modulepreload" href="src/router.js">
+  <link rel="modulepreload" href="src/export.js">
+  <link rel="modulepreload" href="src/ui/dom.js">
+  <link rel="modulepreload" href="src/ui/cards.js">
+  <link rel="modulepreload" href="src/ui/sparkline.js">
+  <link rel="modulepreload" href="src/ui/charts.js">
+  <link rel="modulepreload" href="src/ui/heatmap.js">
+  <link rel="modulepreload" href="src/ui/worldmap.js">
+  <link rel="modulepreload" href="src/ui/nav.js">
+  <link rel="modulepreload" href="src/ui/feedback.js">
+  <link rel="modulepreload" href="src/views/overview.js">
+  <link rel="modulepreload" href="src/views/site.js">
+  <link rel="modulepreload" href="src/views/github.js">
+
   <script defer src="i18n/i18n-dict.js"></script>
   <script defer src="i18n/i18n-text-map.js"></script>
   <script defer src="i18n/i18n.js"></script>
   <script defer src="i18n/i18n-runtime.js"></script>
+  <script defer src="vendor/chart.umd.min.js"></script>
+  <script defer src="config.local.js"></script>
+  <script type="module" src="src/main.js"></script>
 </head>
-<body>
-  <!-- Login Gateway -->
-  <div id="login-overlay" class="login-overlay">
-    <div class="login-atmosphere" aria-hidden="true">
-      <div class="grid-mesh"></div>
-      <div class="login-glow"></div>
-    </div>
+<body data-view="overview">
+  <a class="skip-link" href="#main">Pular para o conteúdo</a>
+  <div id="progress" class="progress" aria-hidden="true"></div>
+
+  <!-- Login gateway -->
+  <div id="login-overlay" class="login-overlay" role="dialog" aria-modal="true" aria-labelledby="login-title">
+    <div class="login-atmosphere" aria-hidden="true"><div class="login-glow"></div></div>
     <div class="login-card">
-      <div class="login-bracket login-bracket-tl" aria-hidden="true"></div>
-      <div class="login-bracket login-bracket-tr" aria-hidden="true"></div>
-      <div class="login-bracket login-bracket-bl" aria-hidden="true"></div>
-      <div class="login-bracket login-bracket-br" aria-hidden="true"></div>
+      <span class="login-bracket login-bracket-tl" aria-hidden="true"></span>
+      <span class="login-bracket login-bracket-tr" aria-hidden="true"></span>
+      <span class="login-bracket login-bracket-bl" aria-hidden="true"></span>
+      <span class="login-bracket login-bracket-br" aria-hidden="true"></span>
       <div class="login-header">
-        <div class="badge" data-i18n="obs.accessGate">⊹ ACCESS GATE / RESTRITO</div>
-        <h2 data-i18n="obs.title">Observatory</h2>
+        <div class="badge" data-i18n="obs.accessGate">⊹ PORTÃO DE ACESSO / RESTRITO</div>
+        <h1 id="login-title" data-i18n="obs.title">Observatory</h1>
         <p class="login-sub" data-i18n="obs.accessDescription">Telemetria do ecossistema datageoparaná. Autorização necessária.</p>
       </div>
-      <form id="login-form" class="login-form">
-        <label>
+      <form id="login-form" class="login-form" novalidate>
+        <label for="login-password">
           <span class="label-text" data-i18n="obs.accessLabel">Senha de acesso</span>
-          <input type="password" id="login-password" placeholder="••••••••" required autocomplete="current-password">
         </label>
+        <input type="password" id="login-password" name="password" placeholder="••••••••" required autocomplete="current-password" aria-describedby="login-error">
         <button type="submit" class="btn btn-full">
-          <span data-i18n="obs.access">Iniciar Sessão</span>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          <span data-i18n="obs.access">Iniciar sessão</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
         </button>
-        <p id="login-error" class="login-error" hidden>// Erro: credencial inválida</p>
+        <p id="login-error" class="login-error" role="alert" hidden></p>
       </form>
-      <div data-i18n-switcher class="lang-switcher--obs" style="margin-top:18px;display:flex;justify-content:center"></div>
-      <p class="login-footer"><span data-i18n="obs.accessFooter">SYS::v2.1 · obs-control</span> · <span id="footer-year">2026</span></p>
+      <div data-i18n-switcher class="lang-switcher--obs login-lang"></div>
+      <p class="login-footer"><span data-i18n="obs.accessFooter">SYS::v3.0 · obs-control</span> · <span id="footer-year">2026</span></p>
     </div>
-  </div>
-
-  <!-- Atmospheric scan-line + grid mesh (decorative) -->
-  <div class="atmosphere" aria-hidden="true">
-    <div class="scan-line"></div>
-    <div class="grid-mesh"></div>
-    <div class="vignette"></div>
   </div>
 
   <div class="app">
-    <!-- Header Observatório -->
     <header class="header">
-      <div class="header-brand">
+      <button id="nav-toggle" class="btn-icon nav-toggle" type="button" aria-label="Abrir navegação" aria-expanded="false" aria-controls="nav">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+      <a class="brand" href="#/overview">
         <span class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.2">
-            <path d="M3 12h18M12 3v18"/>
-            <circle cx="12" cy="12" r="6"/>
-            <circle cx="12" cy="12" r="1.5" fill="currentColor"/>
-          </svg>
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M3 12h18M12 3v18"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>
         </span>
-        <div class="brand-text">
+        <span class="brand-text">
           <span class="brand-kicker" data-i18n="obs.kicker">SYS//OBS-01</span>
-          <h1 data-i18n="obs.title">Observatory</h1>
-        </div>
-      </div>
-      <div class="header-meta" aria-hidden="true">
+          <span class="brand-title" data-i18n="obs.title">Observatory</span>
+        </span>
+      </a>
+      <div class="header-meta">
         <span class="meta-cell" data-label="UPLINK">
-          <span class="status-dot" id="status-dot"></span>
-          <span class="meta-value" data-i18n="obs.live">LIVE</span>
+          <span class="status-dot status-dot--loading" id="status-dot" aria-hidden="true"></span>
+          <span class="meta-value mono" id="status-label">SYNC</span>
         </span>
-        <span class="meta-cell" data-label="LAST SYNC">
-          <time id="updated-at" class="meta-value mono">--:--:--</time>
+        <span class="meta-cell" data-label="ÚLT. SYNC" data-i18n-skip>
+          <time id="updated-at" class="meta-value mono">--:--</time>
         </span>
-        <span class="meta-cell" data-label="UTC">
+        <span class="meta-cell meta-cell--utc" data-label="UTC" data-i18n-skip>
           <time id="utc-clock" class="meta-value mono">--:--:--</time>
         </span>
       </div>
       <div class="header-actions">
         <div data-i18n-switcher class="lang-switcher--obs"></div>
-        <button id="refresh-btn" class="btn-icon" title="Re-sync">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-            <path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9v-3m-9-6a9 9 0 0 1 9-9m-9 9h3m6-9v3"/>
-          </svg>
+        <button id="notify-btn" class="btn-icon" type="button" aria-pressed="false" title="Notificar novos pageviews (opcional)" aria-label="Notificações de novos pageviews">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21h4"/></svg>
+        </button>
+        <button id="refresh-btn" class="btn-icon" type="button" title="Sincronizar agora" aria-label="Sincronizar agora">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></svg>
           <span class="btn-icon-label" data-i18n="obs.sync">SYNC</span>
         </button>
-        <button class="btn-icon" onclick="exportData('csv')" title="Exfil CSV">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
-          </svg>
-          <span class="btn-icon-label" data-i18n="obs.exfil">EXFIL</span>
+        <button id="export-btn" class="btn-icon" type="button" title="Exportar CSV da view atual" aria-label="Exportar CSV da view atual">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          <span class="btn-icon-label">CSV</span>
+        </button>
+        <button id="logout-btn" class="btn-icon" type="button" title="Encerrar sessão" aria-label="Encerrar sessão">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
         </button>
       </div>
     </header>
 
-    <!-- Channel Strip — observatório sources -->
-    <nav class="tabs" role="tablist" aria-label="Canais de telemetria">
-      <a href="#/overview" class="tab active" data-route="overview" role="tab" aria-selected="true">
-        <span class="tab-code">[00]</span>
-        <span class="tab-label" data-i18n="panels.visaoGeral">Visão Geral</span>
-      </a>
-      <div class="tab-divider"></div>
-      <a href="#/datageoparana" class="tab" data-route="datageoparana" role="tab">
-        <span class="tab-code" style="--dot-color: #00f5d4">[01]</span>
-        <span class="tab-label">Datageo</span>
-      </a>
-      <a href="#/portfolio" class="tab" data-route="portfolio" role="tab">
-        <span class="tab-code" style="--dot-color: #ffb800">[02]</span>
-        <span class="tab-label">Portfolio</span>
-      </a>
-      <a href="#/vbp-parana" class="tab" data-route="vbp-parana" role="tab">
-        <span class="tab-code" style="--dot-color: #0072B2">[03]</span>
-        <span class="tab-label">VBP</span>
-      </a>
-      <a href="#/precos-florestais" class="tab" data-route="precos-florestais" role="tab">
-        <span class="tab-code" style="--dot-color: #009E73">[04]</span>
-        <span class="tab-label">Florestais</span>
-      </a>
-      <a href="#/precos-terras" class="tab" data-route="precos-terras" role="tab">
-        <span class="tab-code" style="--dot-color: #CC79A7">[05]</span>
-        <span class="tab-label">Terras</span>
-      </a>
-      <a href="#/precos-diarios" class="tab" data-route="precos-diarios" role="tab">
-        <span class="tab-code" style="--dot-color: #D55E00">[06]</span>
-        <span class="tab-label">Diários</span>
-      </a>
-      <a href="#/comexstat-parana" class="tab" data-route="comexstat-parana" role="tab">
-        <span class="tab-code" style="--dot-color: #56B4E9">[07]</span>
-        <span class="tab-label">ComexStat</span>
-      </a>
-      <a href="#/emprego-agro-parana" class="tab" data-route="emprego-agro-parana" role="tab">
-        <span class="tab-code" style="--dot-color: #ff3864">[08]</span>
-        <span class="tab-label">Emprego</span>
-      </a>
-      <a href="#/censo-parana" class="tab" data-route="censo-parana" role="tab">
-        <span class="tab-code" style="--dot-color: #E69F00">[09]</span>
-        <span class="tab-label">Censo</span>
-      </a>
-      <a href="#/credito-rural-parana" class="tab" data-route="credito-rural-parana" role="tab">
-        <span class="tab-code" style="--dot-color: #3a86ff">[10]</span>
-        <span class="tab-label">Crédito</span>
-      </a>
-      <a href="#/saude-parana" class="tab" data-route="saude-parana" role="tab">
-        <span class="tab-code" style="--dot-color: #f0e442">[11]</span>
-        <span class="tab-label">Saúde</span>
-      </a>
-      <a href="#/seguranca-parana" class="tab" data-route="seguranca-parana" role="tab">
-        <span class="tab-code" style="--dot-color: #8b93a8">[12]</span>
-        <span class="tab-label">Segurança</span>
-      </a>
-      <a href="#/c2-parana" class="tab" data-route="c2-parana" role="tab">
-        <span class="tab-code" style="--dot-color: #ff8500">[13]</span>
-        <span class="tab-label">C2</span>
-      </a>
-      <a href="#/cwbtopo" class="tab" data-route="cwbtopo" role="tab">
-        <span class="tab-code" style="--dot-color: #b6a682">[14]</span>
-        <span class="tab-label">CWBTopo</span>
-      </a>
-      <a href="#/dayane-psicologia" class="tab" data-route="dayane-psicologia" role="tab">
-        <span class="tab-code" style="--dot-color: #84a98c">[15]</span>
-        <span class="tab-label">Dayane</span>
-      </a>
-      <a href="#/d3d" class="tab" data-route="d3d" role="tab">
-        <span class="tab-code" style="--dot-color: #fb7185">[16]</span>
-        <span class="tab-label">D3D</span>
-      </a>
-    </nav>
+    <div class="shell">
+      <nav id="nav" class="sidebar" aria-label="Canais de telemetria"></nav>
 
-    <!-- Conteudo Principal -->
-    <main class="main">
-      <!-- ═══════════════════════════════════════════════════════════════════
-           VIEW: VISAO GERAL (KPI Cards + Mini Timeseries)
-           ═══════════════════════════════════════════════════════════════════ -->
-      <section id="view-overview" class="view active">
-        <!-- KPI Cards with Sparklines -->
-        <div class="card-grid" id="overview-cards"></div>
-
-        <!-- Mini Timeseries -->
-        <div class="overview-chart-container">
-          <canvas id="overview-timeseries"></canvas>
-        </div>
-      </section>
-
-      <!-- ═══════════════════════════════════════════════════════════════════
-           VIEW: SITE (Detalhamentos)
-           ═══════════════════════════════════════════════════════════════════ -->
-      <section id="view-site" class="view">
-        <div class="site-header">
-          <h2 id="site-name">Site</h2>
-          <p id="site-desc">Detalhes e distribuicoes.</p>
-        </div>
-
-        <div class="card-grid" id="site-kpis"></div>
-
-        <div class="panel">
-          <div class="panel-head">
+      <main id="main" class="main" tabindex="-1">
+        <!-- ═══════════ VISÃO GERAL ═══════════ -->
+        <section class="view active" data-view="overview" id="view-overview" aria-labelledby="ov-title">
+          <div class="view-head">
             <div>
-              <h3>Serie temporal</h3>
-              <p class="panel-desc">Acessos ao longo do tempo.</p>
+              <h2 id="ov-title" data-i18n="panels.visaoGeral">Visão geral</h2>
+              <p class="view-desc">Pageviews anônimos (LGPD, sem cookies nem IP) de todos os sites. Os cards usam janelas fixas; os painéis seguem o período escolhido.</p>
             </div>
-            <div class="controls" data-scope="site">
-              <label>
-                <select data-filter="granularity">
-                  <option value="hour">Hora</option>
-                  <option value="day" selected>Dia</option>
-                  <option value="month">Mes</option>
-                </select>
-              </label>
-              <label>
-                <select data-filter="period">
-                  <option value="all" selected>Tudo</option>
-                  <option value="7d">7 dias</option>
+            <div class="controls">
+              <label class="control">
+                <span class="control-label">Período</span>
+                <select id="ov-period">
+                  <option value="24h">24 horas</option>
+                  <option value="7d" selected>7 dias</option>
                   <option value="30d">30 dias</option>
                   <option value="90d">90 dias</option>
                 </select>
               </label>
             </div>
           </div>
-          <div class="chart-wrap">
-            <canvas id="site-chart"></canvas>
-          </div>
-        </div>
 
-        <div class="grid-2">
-          <div class="panel">
-            <div class="panel-head">
-              <h3>Heatmap de atividade</h3>
-              <div class="heatmap-legend">
-                <span class="heatmap-legend-label">Baixo</span>
-                <div class="heatmap-legend-gradient"></div>
-                <span class="heatmap-legend-label">Alto</span>
-              </div>
-            </div>
-            <div id="heatmap-container" class="heatmap-container"></div>
-          </div>
-          <div class="panel">
+          <div id="ov-kpis" class="kpi-grid kpi-grid--six"></div>
+
+          <section class="panel panel--alerts" aria-labelledby="ov-alerts-title">
             <div class="panel-head">
               <div>
-                <h3>Mapa de Fusos</h3>
-              </div>
-              <div class="tz-legend">
-                <span class="tz-legend-item"><span class="tz-dot tz-recent"></span> &lt;1h</span>
-                <span class="tz-legend-item"><span class="tz-dot tz-today"></span> Hoje</span>
-                <span class="tz-legend-item"><span class="tz-dot tz-week"></span> Semana</span>
-                <span class="tz-legend-item"><span class="tz-dot tz-old"></span> Antigo</span>
+                <h3 id="ov-alerts-title">Saúde do tracking</h3>
+                <p class="panel-desc">Sites sem pageviews há mais de 7 dias ou com falha de leitura no proxy. Um site "silencioso" costuma indicar snippet removido ou planilha renomeada.</p>
               </div>
             </div>
-            <div id="timezone-map" class="timezone-map-container"></div>
-          </div>
-        </div>
+            <div id="ov-alerts"></div>
+          </section>
 
-        <div class="grid-3">
-          <div class="panel panel-small">
-            <h4>Timezones</h4>
-            <div class="chart-wrap small">
-              <canvas id="tz-chart"></canvas>
+          <section class="panel" aria-labelledby="ov-series-title">
+            <div class="panel-head">
+              <div>
+                <h3 id="ov-series-title">Pageviews por site · <span data-ov-period-label>7 dias</span></h3>
+                <p class="panel-desc">Barras empilhadas por dia (ou por hora em 24 h), no fuso America/Sao_Paulo. Seis sites mais ativos destacados; demais agrupados em "Outros".</p>
+              </div>
             </div>
-          </div>
-          <div class="panel panel-small">
-            <h4>Referrers</h4>
-            <div class="chart-wrap small">
-              <canvas id="ref-chart"></canvas>
+            <div class="chart-wrap chart-wrap--tall">
+              <canvas id="ov-series" role="img" aria-label="Série temporal de pageviews por site"></canvas>
+              <p class="chart-empty">Sem dados no período</p>
             </div>
-          </div>
-          <div class="panel panel-small">
-            <h4>Dispositivo</h4>
-            <div class="chart-wrap small">
-              <canvas id="device-chart"></canvas>
-            </div>
-          </div>
-          <div class="panel panel-small">
-            <h4>Idioma</h4>
-            <div class="chart-wrap small">
-              <canvas id="lang-chart"></canvas>
-            </div>
-          </div>
-          <div class="panel panel-small">
-            <h4>Conexao</h4>
-            <div class="chart-wrap small">
-              <canvas id="connection-chart"></canvas>
-            </div>
-          </div>
-          <div class="panel panel-small">
-            <h4>Tema</h4>
-            <div class="chart-wrap small">
-              <canvas id="theme-chart"></canvas>
-            </div>
-          </div>
-        </div>
+          </section>
 
-        <div class="panel">
-          <div class="panel-head">
-            <h3>Ultimos acessos</h3>
+          <div class="grid grid--2">
+            <section class="panel" aria-labelledby="ov-ranking-title">
+              <div class="panel-head"><h3 id="ov-ranking-title">Ranking de sites · <span data-ov-period-label>7 dias</span></h3></div>
+              <div id="ov-ranking"></div>
+            </section>
+            <section class="panel" aria-labelledby="ov-pages-title">
+              <div class="panel-head"><h3 id="ov-pages-title">Páginas mais acessadas</h3></div>
+              <div id="ov-pages"></div>
+            </section>
           </div>
-          <div class="table-wrap">
-            <table id="latest-table">
-              <thead>
-                <tr>
-                  <th>Data</th>
-                  <th>Pagina</th>
-                  <th>Referrer</th>
-                  <th>Timezone</th>
-                  <th>Dispositivo</th>
-                  <th>Idioma</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
+
+          <div class="grid grid--3">
+            <section class="panel" aria-labelledby="ov-channels-title">
+              <div class="panel-head"><h3 id="ov-channels-title">Canais de origem</h3></div>
+              <div id="ov-channels"></div>
+            </section>
+            <section class="panel" aria-labelledby="ov-geo-title">
+              <div class="panel-head"><h3 id="ov-geo-title">Geografia por fuso</h3></div>
+              <div id="ov-geo"></div>
+            </section>
+            <section class="panel" aria-labelledby="ov-devices-title">
+              <div class="panel-head"><h3 id="ov-devices-title">Dispositivo e tema</h3></div>
+              <div id="ov-devices"></div>
+            </section>
           </div>
-        </div>
-      </section>
-    </main>
+
+          <div class="grid grid--2">
+            <section class="panel" aria-labelledby="ov-heatmap-title">
+              <div class="panel-head">
+                <div>
+                  <h3 id="ov-heatmap-title">Hora × dia da semana</h3>
+                  <p class="panel-desc">Fuso America/Sao_Paulo.</p>
+                </div>
+                <div class="heatmap-legend" aria-hidden="true"><span>menos</span><span class="heatmap-legend-gradient"></span><span>mais</span></div>
+              </div>
+              <div id="ov-heatmap" class="heatmap"></div>
+            </section>
+            <section class="panel" aria-labelledby="ov-perf-title">
+              <div class="panel-head">
+                <div>
+                  <h3 id="ov-perf-title">Tempo de carga p95 por site</h3>
+                  <p class="panel-desc">Percentil 95 do loadTime reportado pelo snippet (mínimo 3 medições).</p>
+                </div>
+              </div>
+              <div id="ov-perf"></div>
+            </section>
+          </div>
+
+          <section class="panel" aria-labelledby="ov-map-title">
+            <div class="panel-head">
+              <div><h3 id="ov-map-title">Mapa de fusos</h3><p class="panel-desc">Recência do último pageview por fuso UTC.</p></div>
+              <div class="tz-legend" aria-hidden="true">
+                <span class="tz-legend-item"><span class="tz-dot tz-recent"></span> &lt;1 h</span>
+                <span class="tz-legend-item"><span class="tz-dot tz-today"></span> hoje</span>
+                <span class="tz-legend-item"><span class="tz-dot tz-week"></span> semana</span>
+                <span class="tz-legend-item"><span class="tz-dot tz-old"></span> antigo</span>
+              </div>
+            </div>
+            <div id="ov-map" class="worldmap"></div>
+          </section>
+        </section>
+
+        <!-- ═══════════ SITE ═══════════ -->
+        <section class="view" data-view="site" id="view-site" aria-labelledby="site-title">
+          <div class="view-head">
+            <div data-i18n-skip>
+              <h2 id="site-title">Site</h2>
+              <div id="site-meta" class="site-meta"></div>
+            </div>
+            <div class="controls">
+              <label class="control">
+                <span class="control-label">Período</span>
+                <select id="site-period">
+                  <option value="24h">24 horas</option>
+                  <option value="7d">7 dias</option>
+                  <option value="30d" selected>30 dias</option>
+                  <option value="90d">90 dias</option>
+                  <option value="365d">1 ano</option>
+                  <option value="all">Tudo</option>
+                </select>
+              </label>
+              <label class="control">
+                <span class="control-label">Granularidade</span>
+                <select id="site-granularity">
+                  <option value="hour">Hora</option>
+                  <option value="day" selected>Dia</option>
+                  <option value="month">Mês</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <div id="site-kpis" class="kpi-grid"></div>
+          <div id="site-empty"></div>
+
+          <div id="site-body" class="site-body">
+            <section class="panel" aria-labelledby="site-series-title">
+              <div class="panel-head"><h3 id="site-series-title">Série temporal</h3></div>
+              <div class="chart-wrap">
+                <canvas id="site-series" role="img" aria-label="Série temporal de pageviews do site"></canvas>
+                <p class="chart-empty">Sem dados no período</p>
+              </div>
+            </section>
+
+            <div class="grid grid--2">
+              <section class="panel" aria-labelledby="site-pages-title">
+                <div class="panel-head"><h3 id="site-pages-title">Páginas mais acessadas</h3></div>
+                <div id="site-pages"></div>
+              </section>
+              <section class="panel" aria-labelledby="site-referrers-title">
+                <div class="panel-head"><h3 id="site-referrers-title">Referrers</h3></div>
+                <div id="site-referrers"></div>
+              </section>
+            </div>
+
+            <div class="grid grid--2">
+              <section class="panel" aria-labelledby="site-channels-title">
+                <div class="panel-head"><h3 id="site-channels-title">Canais de origem</h3></div>
+                <div id="site-channels"></div>
+              </section>
+              <section class="panel" aria-labelledby="site-campaigns-title">
+                <div class="panel-head"><h3 id="site-campaigns-title">Campanhas UTM</h3></div>
+                <div id="site-campaigns"></div>
+              </section>
+            </div>
+
+            <div class="grid grid--4">
+              <section class="panel panel--small" aria-labelledby="site-devices-title">
+                <h4 id="site-devices-title">Dispositivo</h4>
+                <div id="site-devices"></div>
+              </section>
+              <section class="panel panel--small" aria-labelledby="site-languages-title">
+                <h4 id="site-languages-title">Idioma</h4>
+                <div id="site-languages"></div>
+              </section>
+              <section class="panel panel--small" aria-labelledby="site-connections-title">
+                <h4 id="site-connections-title">Conexão</h4>
+                <div id="site-connections"></div>
+              </section>
+              <section class="panel panel--small" aria-labelledby="site-themes-title">
+                <h4 id="site-themes-title">Tema</h4>
+                <div id="site-themes"></div>
+              </section>
+            </div>
+
+            <div class="grid grid--2">
+              <section class="panel" aria-labelledby="site-heatmap-title">
+                <div class="panel-head">
+                  <div><h3 id="site-heatmap-title">Hora × dia da semana</h3><p class="panel-desc">Fuso America/Sao_Paulo.</p></div>
+                  <div class="heatmap-legend" aria-hidden="true"><span>menos</span><span class="heatmap-legend-gradient"></span><span>mais</span></div>
+                </div>
+                <div id="site-heatmap" class="heatmap"></div>
+              </section>
+              <section class="panel" aria-labelledby="site-map-title">
+                <div class="panel-head">
+                  <div><h3 id="site-map-title">Mapa de fusos</h3></div>
+                  <div class="tz-legend" aria-hidden="true">
+                    <span class="tz-legend-item"><span class="tz-dot tz-recent"></span> &lt;1 h</span>
+                    <span class="tz-legend-item"><span class="tz-dot tz-today"></span> hoje</span>
+                    <span class="tz-legend-item"><span class="tz-dot tz-week"></span> semana</span>
+                    <span class="tz-legend-item"><span class="tz-dot tz-old"></span> antigo</span>
+                  </div>
+                </div>
+                <div id="site-map" class="worldmap"></div>
+              </section>
+            </div>
+
+            <section class="panel" aria-labelledby="site-latest-title">
+              <div class="panel-head"><h3 id="site-latest-title" data-i18n="panels.ultimos">Últimos acessos</h3></div>
+              <div class="table-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Data</th>
+                      <th scope="col">Página</th>
+                      <th scope="col">Referrer</th>
+                      <th scope="col">Fuso</th>
+                      <th scope="col">Dispositivo</th>
+                      <th scope="col">Idioma</th>
+                      <th scope="col">Carga</th>
+                    </tr>
+                  </thead>
+                  <tbody id="site-latest"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <!-- ═══════════ REPOSITÓRIOS ═══════════ -->
+        <section class="view" data-view="github" id="view-github" aria-labelledby="gh-title">
+          <div class="view-head">
+            <div>
+              <h2 id="gh-title">Repositórios</h2>
+              <p class="view-desc">Contas e organizações no GitHub, cruzadas com os sites monitorados. API pública, cache local de 30 minutos.</p>
+            </div>
+            <div class="controls">
+              <label class="control">
+                <span class="control-label">Filtrar</span>
+                <input id="gh-filter" class="control-input" type="search" placeholder="nome, linguagem…" autocomplete="off">
+              </label>
+              <button id="gh-refresh" class="btn-icon" type="button" title="Consultar o GitHub agora">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></svg>
+                <span class="btn-icon-label">Atualizar</span>
+              </button>
+            </div>
+          </div>
+          <p id="gh-notice" class="notice mono"></p>
+
+          <div id="gh-kpis" class="kpi-grid kpi-grid--six"></div>
+
+          <div class="grid grid--2">
+            <section class="panel" aria-labelledby="gh-suggestions-title">
+              <div class="panel-head">
+                <div>
+                  <h3 id="gh-suggestions-title">Sites publicados sem tracking</h3>
+                  <p class="panel-desc">Repositórios com GitHub Pages ativo que ainda não estão no painel. Para monitorar: cole o snippet antes de <code>&lt;/body&gt;</code>, crie a planilha, adicione o site em <code>SITES</code> do Apps Script e em <code>src/sites.js</code>.</p>
+                </div>
+              </div>
+              <div id="gh-suggestions"></div>
+            </section>
+            <section class="panel" aria-labelledby="gh-snippet-title">
+              <div class="panel-head">
+                <div><h3 id="gh-snippet-title">Snippet de tracking (LGPD, 18 campos anônimos)</h3></div>
+                <button id="gh-copy-snippet" class="btn-icon" type="button">Copiar</button>
+              </div>
+              <pre id="gh-snippet" class="snippet" tabindex="0">&lt;script&gt;
+(function(){var T='https://script.google.com/macros/s/AKfycbwdSLK3K9_D39sc0UfzYZIM1QEMLxMUudSneAELoqcJjM5ExTSq7ZmMilNzYDx5QK5iMA/exec';function d(){var u=navigator.userAgent.toLowerCase();if(/tablet|ipad|playbook|silk/i.test(u))return'tablet';if(/mobile|iphone|ipod|android|blackberry|opera mini|iemobile/i.test(u))return'mobile';return'desktop'}function g(p){try{return new URLSearchParams(location.search).get(p)||''}catch(e){return''}}var o={timestamp:new Date().toISOString(),timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||'',timezoneOffset:new Date().getTimezoneOffset(),page:location.href,pathname:location.pathname,referrer:document.referrer||'direct',pageTitle:document.title,language:navigator.language||'',deviceType:d(),screenOrientation:screen.orientation?screen.orientation.type.split('-')[0]:'',connectionType:navigator.connection?navigator.connection.effectiveType:'',loadTime:0,utmSource:g('utm_source'),utmMedium:g('utm_medium'),utmCampaign:g('utm_campaign'),utmTerm:g('utm_term'),utmContent:g('utm_content'),prefersColorScheme:matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light',origin:location.origin};function s(){setTimeout(function(){o.loadTime=Math.round(performance.now());fetch(T,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(o)}).catch(function(){})},100)}if(document.readyState==='complete')s();else addEventListener('load',s)})();
+&lt;/script&gt;</pre>
+              <h4 class="panel-subhead">Linguagens</h4>
+              <div id="gh-languages"></div>
+            </section>
+          </div>
+
+          <section class="panel" aria-labelledby="gh-repos-title">
+            <div class="panel-head">
+              <h3 id="gh-repos-title">Todos os repositórios <span id="gh-count" class="count mono"></span></h3>
+            </div>
+            <div id="gh-repos" class="table-wrap"></div>
+          </section>
+        </section>
+      </main>
+    </div>
   </div>
 
-  <!-- Painel de Detalhes (ao clicar em pagina) -->
-  <aside id="detail-panel" class="detail-panel hidden">
-    <button class="detail-close" onclick="closeDetail()" aria-label="Fechar">&times;</button>
-    <div id="detail-content"></div>
-  </aside>
-
-  <!-- Overlay para painel de detalhes -->
-  <div id="detail-overlay" class="detail-overlay hidden" onclick="closeDetail()"></div>
-
-  <!-- Toast -->
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-
-  <!-- Loading -->
-  <div id="loading-overlay" class="loading-overlay" aria-hidden="true">
-    <div class="loading-spinner"></div>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <!-- config.local.js contém a URL do Apps Script -->
-  <script src="config.local.js"></script>
-  <script src="config.js"></script>
-  <script src="app.js"></script>
-  <script>
-    // Live UTC clock — observatory chrome.
-    (function () {
-      var el = document.getElementById('utc-clock');
-      if (!el) return;
-      function pad(n) { return n < 10 ? '0' + n : '' + n; }
-      function tick() {
-        var d = new Date();
-        el.textContent = pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ':' + pad(d.getUTCSeconds()) + ' Z';
-      }
-      tick();
-      setInterval(tick, 1000);
-    })();
-    // Fill year in login footer.
-    (function () {
-      var y = document.getElementById('footer-year');
-      if (y) y.textContent = new Date().getFullYear();
-    })();
-  </script>
 </body>
 </html>

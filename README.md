@@ -1,38 +1,73 @@
-﻿# Control Panel
+# Observatory · Control Panel
 
-Dashboard estatico para monitorar trafego/visitas a paginas a partir de Google Sheets publicos. O projeto usa apenas HTML/CSS/JS e funciona em GitHub Pages.
+Painel estático (GitHub Pages) que monitora os pageviews anônimos dos sites do ecossistema
+Datageo Paraná, do portfólio e de sites de clientes. Sem cookies, sem IP, sem identificação
+de visitante: só os 18 campos do snippet LGPD (`tracking-snippet-lgpd.html`).
+
+**Produção:** https://avnergomes.github.io/controlpanel/
+
+## Como funciona
+
+```
+sites (snippet LGPD) ──POST──▶ Google Apps Script (server/proxy.gs) ──▶ Google Sheets (uma por site)
+painel (este repo)   ──POST──▶ mesmo Apps Script: login → token de sessão → getData
+painel               ──GET───▶ api.github.com (público, cache local 30 min) para a view Repositórios
+```
+
+- `index.html` + `styles.css`: shell com sidebar (Visão geral, Repositórios, sites por grupo).
+- `src/`: módulos ES sem bundler. `analytics.js` e `normalize.js` são puros e cobertos por testes.
+- `vendor/chart.umd.min.js`: Chart.js self-hosted (só séries temporais; distribuições são barras HTML).
+- `assets/world-paths.json`: mapa-múndi pré-projetado (gerado por `scripts/build_world_paths.py`).
+- `server/proxy.gs`: backend v3 (compatível com o cliente; ver "Backend").
+- `docs/PLANO-REFATORACAO.md`: diagnóstico e decisões da versão 3.
 
 ## Rodar localmente
 
-Use um servidor simples para evitar bloqueios do navegador:
-
 ```bash
-python -m http.server
+npm install
+node scripts/make-fixture.mjs      # gera tests/fixtures (dados sintéticos)
+npm run dev                        # http://127.0.0.1:4173/
 ```
 
-Depois abra `http://localhost:8000`.
+- `http://127.0.0.1:4173/?mock=1` abre o painel com as fixtures, sem login (só em localhost).
+- Sem `?mock=1`, o painel usa a URL do Apps Script em `config.local.js` e pede a senha.
 
-## Publicar no GitHub Pages
+## Testes
 
-1. Faça push do repositorio.
-2. Em GitHub, abra **Settings** -> **Pages**.
-3. Em **Branch**, selecione `main` e `/root`.
-4. Salve e aguarde o link do Pages.
+```bash
+npm test          # vitest: normalização, analytics, roteador, cache, export, GitHub
+npm run test:e2e  # Playwright: login, overview, site, repositórios, export, mock (proxy e GitHub mockados, CSP ativa)
+npm run check     # os dois
+```
 
-## Configurar o gid antigo do VBP
+O workflow `.github/workflows/deploy.yml` roda os testes antes de publicar e sobe apenas `dist/`
+(montado por `scripts/build.mjs`, com versionamento dos assets).
 
-O VBP possui duas abas de visitas (antiga e recente). Para fazer merge e deduplicacao:
+## Adicionar um site ao monitoramento
 
-1. Abra a aba antiga no Google Sheets.
-2. Copie o parametro `gid=XXXX` da URL.
-3. Edite `config.js` e preencha `VBP_OLD_GID` com o valor.
+1. Cole o snippet de `tracking-snippet-lgpd.html` antes de `</body>` no site (a view
+   Repositórios lista os sites publicados com GitHub Pages que ainda não têm tracking).
+2. Crie uma planilha Google e copie o id.
+3. Em `server/proxy.gs`, adicione a entrada em `SITES` (key, urlKey, name, sheetId, kind) e a
+   origem em `ALLOWED_ORIGINS`; publique nova versão da implantação e rode `setupAllSheets()`.
+4. Em `src/sites.js`, adicione o site (key, name, short, code, kind, color, url, repo, group).
+5. `npm run check` e push.
 
-## Permissoes
+## Backend (Google Apps Script)
 
-Os Sheets precisam estar como **anyone with link** para o endpoint GViz funcionar sem backend.
+O arquivo versionado é `server/proxy.gs` (v3). Ele mantém o contrato do v2, então o cliente
+funciona com qualquer um dos dois. Ganhos do v3: cache em blocos (o v2 nunca cacheava),
+formato colunar, busca incremental (`since`), sessão deslizante, relay do GitHub com token
+opcional e o site D3D. Segredos ficam em *Script Properties* (`PASSWORD_HASH`,
+`PASSWORD_SALT` opcional, `GITHUB_TOKEN` opcional), nunca no código.
 
-## Notas
+Passo a passo de publicação: cabeçalho de `server/proxy.gs`.
 
-- Atualizacao automatica a cada 60s.
-- Cache local por 10 minutos (ajuste em `config.js`).
+## Segurança e LGPD
 
+- CSP estrita (sem scripts inline), token de sessão só no corpo do POST e em `sessionStorage`.
+- Dados anônimos; colunas potencialmente identificadoras de planilhas antigas (user agent,
+  session id, resolução) são descartadas no servidor (v3) e nunca vão para o cache local.
+- Exportação CSV neutraliza fórmulas e usa `;` + BOM (Excel pt-BR).
+- `config.local.js` guarda apenas a URL pública do Apps Script (a mesma que está em todos os
+  snippets); em produção ela é regenerada a partir do secret `TRACKING_URL`.

@@ -1,81 +1,24 @@
-# Migration Notes: Session Token Security
+# Notas de migração
 
-## Current Issue
+## v3 (set/2026): cliente refatorado + backend `server/proxy.gs`
 
-The session token is currently passed as a URL query parameter:
-```javascript
-fetch(`${CONFIG.proxyUrl}?action=getData&token=${encodeURIComponent(sessionToken)}`)
-```
+O cliente v3 já está em produção e fala com o backend v2 atual. Para ativar os ganhos do
+servidor (cache real, delta, formato colunar, sessão deslizante, D3D, relay GitHub):
 
-Tokens in query strings appear in:
-- Server logs
-- Browser history
-- Referer headers to third-party resources
-- Analytics tools
+1. Abra o projeto no Apps Script e substitua o código por `server/proxy.gs`.
+2. *Project Settings → Script Properties*:
+   - `PASSWORD_HASH`: o mesmo hash SHA-256 que estava na constante do arquivo antigo.
+   - `PASSWORD_SALT` (opcional): se definir, recompute o hash como sha256(salt + senha).
+   - `GITHUB_TOKEN` (opcional): PAT somente leitura para o relay `action: "github"`.
+3. Crie a planilha do D3D e preencha `sheetId` na entrada `d3d` de `SITES`.
+4. *Deploy → Manage deployments → Edit → New version → Deploy* (mantém a URL).
+5. Execute `setupAllSheets()` uma vez.
+6. Verifique `GET <url>?action=health` → `{"status":"ok","version":"3.0",...}`.
 
-## Proposed Solution
+O cliente detecta a versão pela resposta (`version`, `format`, `delta`); nada precisa mudar
+no repositório.
 
-Move the session token to POST body:
+## Histórico
 
-### Client-side (app.js)
-
-Change `fetchAllSites()` from:
-```javascript
-// CURRENT (insecure)
-const url = `${CONFIG.proxyUrl}?action=getData&token=${encodeURIComponent(sessionToken)}`;
-const response = await fetch(url, { redirect: "follow" });
-```
-
-To:
-```javascript
-// IMPLEMENTED (secure) - uses text/plain to avoid CORS preflight
-const response = await fetch(CONFIG.proxyUrl, {
-  method: 'POST',
-  headers: { 'Content-Type': 'text/plain' },
-  body: JSON.stringify({
-    action: 'getData',
-    token: sessionToken
-  }),
-  redirect: 'follow'
-});
-```
-
-**Note**: `Content-Type: text/plain` is used instead of `application/json` to avoid CORS preflight requests with Google Apps Script.
-
-### Server-side (Google Apps Script)
-
-The `doPost` function needs to handle `action: 'getData'`:
-
-```javascript
-function doPost(e) {
-  var data = JSON.parse(e.postData.contents);
-
-  // Handle getData action
-  if (data.action === 'getData' && data.token) {
-    if (!validateSession_(data.token)) {
-      return jsonResponse_({ error: 'unauthorized' });
-    }
-    return fetchAllSitesData_(e);
-  }
-
-  // ... existing tracking code ...
-}
-```
-
-## Migration Steps
-
-1. **Phase 1**: Update Apps Script to accept token in BOTH query param AND POST body
-2. **Phase 2**: Update client to use POST body
-3. **Phase 3**: Remove query param support from Apps Script after confirming client is updated
-
-## Files to Modify
-
-- `app.js` - Line ~374 (`fetchAllSites` function)
-- `google-apps-script-proxy.gs` - `doPost` function
-
-## Status
-
-- [ ] Apps Script updated to accept both methods (TODO: update doPost to handle getData action)
-- [x] Client updated to use POST body (2026-03-01)
-- [ ] Query param support deprecated
-- [ ] Query param support removed
+- 2026-03-01: token de sessão migrado do query string para o corpo do POST (cliente).
+- 2026-09-05: caminho legado por query string e `LEGACY_TOKEN` removidos no v3; login por GET removido.

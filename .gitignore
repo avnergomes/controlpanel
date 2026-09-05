@@ -7,6 +7,12 @@ dist/
 build/
 .vite/
 
+# Tests
+playwright-report/
+test-results/
+coverage/
+tests/fixtures/
+
 # Environment
 .env
 .env.local
@@ -35,10 +41,6 @@ desktop.ini
 *.log
 npm-debug.log*
 
-# Coverage
-coverage/
-.nyc_output/
-
 # Claude Code
 .claude/
 CLAUDE.md
@@ -47,10 +49,14 @@ CLAUDE.md
 # Misc
 *.tgz
 .cache/
+.omc/
 
 # Repo-specific
 sheets.txt
 *.tmp
 *.temp
-*.gs
+# Old Apps Script files carried secrets; the v3 server keeps them in Script Properties
+# and is versioned at server/proxy.gs.
+google-apps-script*.gs
 google-apps-script*.js
+GAS-URLs.gs
