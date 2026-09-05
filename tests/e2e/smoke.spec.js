@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { mockBackend, collectConsoleErrors, login, PASSWORD } from "./helpers.mjs";
+import { SITES } from "../../src/sites.js";
 
 test.describe("login and overview", () => {
   test("rejects a wrong password and accepts the right one without console errors", async ({ page }) => {
@@ -43,7 +44,7 @@ test.describe("login and overview", () => {
     await expect(page.locator("#ov-alerts .alert--silent .alert-site")).toHaveText("Segurança Paraná");
     await expect(page.locator("#ov-alerts .alert--stale .alert-site")).toHaveText("Crédito Rural Paraná");
 
-    await expect(page.locator("#ov-ranking .barlist-item")).toHaveCount(16);
+    await expect(page.locator("#ov-ranking .barlist-item")).toHaveCount(SITES.length);
     await expect(page.locator("#ov-pages .barlist-item").first()).toBeVisible();
     await expect(page.locator("#ov-channels .barlist-item").first()).toBeVisible();
     await expect(page.locator("#ov-geo .geo-chip").first()).toBeVisible();
@@ -62,7 +63,7 @@ test.describe("login and overview", () => {
     expect(drawn).toBe(true);
 
     // Sidebar shows all sites with health dots and 24h counts.
-    await expect(page.locator("#nav .nav-link")).toHaveCount(2 + 16);
+    await expect(page.locator("#nav .nav-link")).toHaveCount(2 + SITES.length);
     await expect(page.locator("#nav .nav-dot--live, #nav .nav-dot--active")).not.toHaveCount(0);
     await expect(page.locator("#nav .nav-dot--error")).toHaveCount(1);
 

@@ -659,6 +659,7 @@ window.__I18N_TEXT_MAP__ = (function () {
     ["Visão geral", "Overview", "Visión general"],
     ["Repositórios", "Repositories", "Repositorios"],
     ["Pessoal", "Personal", "Personal"],
+    ["Institucional", "Institutional", "Institucional"],
     ["Clientes", "Clients", "Clientes"],
     ["Pageviews anônimos (LGPD, sem cookies nem IP) de todos os sites. Os cards usam janelas fixas; os painéis seguem o período escolhido.",
       "Anonymous pageviews (LGPD, no cookies or IP) across all sites. Cards use fixed windows; panels follow the selected period.",

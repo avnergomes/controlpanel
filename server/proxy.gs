@@ -52,8 +52,10 @@ var SITES = [
   { key: 'c2-parana',            urlKey: 'avnergomes.github.io/c2-parana',       name: 'C2 Parana',            sheetId: '1ggmbcGUTv5gw3i2VCDckEF-Yv2qtWSg8oZk66HA-FZ0', gids: [0],                   trackingSheet: 'Tracking LGPD', kind: 'c2parana' },
   { key: 'dayane-psicologia',    urlKey: 'dayanebuenogomes.github.io',           name: 'Dayane Psicologia',    sheetId: '1fWQcaXf8ttidVwMWcFPIBYFVJd5553o0OjrZw4MQ2WA', gids: [0],                   trackingSheet: 'Tracking LGPD', kind: 'psicologia' },
   { key: 'd3d',                  urlKey: 'd3dinovacao.github.io',                name: 'D3D Inovacao',         sheetId: '1TuFhB-su6XFJTP5EXNwFKucQ8zVFR7UZt5wXM0LYh3E', gids: [],                    trackingSheet: 'Tracking LGPD', kind: 'd3d' },
-  // New sites may leave sheetId empty: a spreadsheet is created on first use and its id
-  // persisted in Script Properties as SHEET_ID_<key>.
+  // sheetId empty: a spreadsheet is created on first use and its id persisted in
+  // Script Properties as SHEET_ID_<key>.
+  { key: 'serra-do-mar',         urlKey: 'avnergomes.github.io/serra-do-mar-webgis', name: 'Serra do Mar WebGIS', sheetId: '',                                          gids: [],                    trackingSheet: 'Tracking LGPD', kind: 'lgpd' },
+  { key: 'aguasegura',           urlKey: 'aguasegura.github.io',                 name: 'Agua Segura',          sheetId: '',                                             gids: [],                    trackingSheet: 'Tracking LGPD', kind: 'lgpd' },
 ];
 
 var ALLOWED_ORIGINS = [
@@ -62,6 +64,7 @@ var ALLOWED_ORIGINS = [
   'https://cwbtopo.github.io',
   'https://dayanebuenogomes.github.io',
   'https://d3dinovacao.github.io',
+  'https://aguasegura.github.io',
   'http://localhost',
   'http://127.0.0.1',
 ];

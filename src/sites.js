@@ -8,6 +8,7 @@
 export const GROUPS = Object.freeze([
   { key: "datageo", label: "Datageo Paraná" },
   { key: "pessoal", label: "Pessoal" },
+  { key: "institucional", label: "Institucional" },
   { key: "clientes", label: "Clientes" },
 ]);
 
@@ -25,6 +26,8 @@ export const SITES = Object.freeze([
   { key: "seguranca-parana", name: "Segurança Paraná", short: "Segurança", code: "12", kind: "lgpd", color: "#8b93a8", url: "https://avnergomes.github.io/seguranca-parana/", repo: "avnergomes/seguranca-parana", group: "datageo" },
   { key: "c2-parana", name: "C2 Paraná", short: "C2", code: "13", kind: "lgpd", color: "#ff8500", url: "https://avnergomes.github.io/c2-parana/", repo: "avnergomes/c2-parana", group: "datageo" },
   { key: "portfolio", name: "Portfólio", short: "Portfólio", code: "02", kind: "portfolio", color: "#ffb800", url: "https://avnergomes.github.io/portfolio/", repo: "avnergomes/portfolio", group: "pessoal" },
+  { key: "serra-do-mar", name: "Serra do Mar WebGIS", short: "Serra do Mar", code: "17", kind: "lgpd", color: "#a3e635", url: "https://avnergomes.github.io/serra-do-mar-webgis/", repo: "avnergomes/serra-do-mar-webgis", group: "pessoal" },
+  { key: "aguasegura", name: "Água Segura", short: "Água Segura", code: "18", kind: "lgpd", color: "#818cf8", url: "https://aguasegura.github.io/mapainterativo/", repo: "aguasegura/mapainterativo", group: "institucional" },
   { key: "cwbtopo", name: "CWB Topografia", short: "CWBTopo", code: "14", kind: "lgpd", color: "#b6a682", url: "https://cwbtopo.github.io/", repo: "cwbtopo/cwbtopo.github.io", group: "clientes" },
   { key: "dayane-psicologia", name: "Dayane Psicologia", short: "Dayane", code: "15", kind: "lgpd", color: "#84a98c", url: "https://dayanebuenogomes.github.io/", repo: "dayanebuenogomes/dayanebuenogomes.github.io", group: "clientes" },
   { key: "d3d", name: "D3D Inovação", short: "D3D", code: "16", kind: "lgpd", color: "#fb7185", url: "https://d3dinovacao.github.io/", repo: "d3dinovacao/d3dinovacao.github.io", group: "clientes" },
@@ -37,6 +40,7 @@ export const GITHUB_ACCOUNTS = Object.freeze([
   "cwbtopo",
   "dayanebuenogomes",
   "d3dinovacao",
+  "aguasegura",
 ]);
 
 const BY_KEY = new Map(SITES.map((site) => [site.key, site]));

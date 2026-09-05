@@ -51,6 +51,8 @@ const PROFILES = {
   cwbtopo: { perDay: 4, lastDaysAgo: 0.3, serverError: true }, // proxy error
   "dayane-psicologia": { perDay: 6, lastDaysAgo: 0.02 },
   d3d: { perDay: 0, lastDaysAgo: null, missing: true },        // absent from proxy SITES
+  "serra-do-mar": { perDay: 6, lastDaysAgo: 0.4 },
+  aguasegura: { perDay: 9, lastDaysAgo: 0.08 },
 };
 
 function hourWeight(hour) {
@@ -143,7 +145,6 @@ function buildGithub() {
     }),
     repo("avnergomes", "controlpanel", { pushedDays: 0, openIssues: 4 }),
     repo("avnergomes", "clt-brasil", { pushedDays: 40, language: "HTML" }),
-    repo("avnergomes", "serra-do-mar-webgis", { pushedDays: 51, language: "HTML", stars: 1, description: "Interactive 3D Web GIS of the Serra do Mar" }),
     repo("avnergomes", "casa-sempre-ganha", { pushedDays: 59, language: "HTML", description: "Relatório interativo trilíngue sobre apostas online" }),
     repo("avnergomes", "parana-rural-access-equity", { pushedDays: 66, language: "HTML" }),
     repo("avnergomes", "aguasegura", { pushedDays: 115, description: "Programa Água Segura" }),

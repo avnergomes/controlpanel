@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
-import { mockBackend, collectConsoleErrors, login } from "./helpers.mjs";
+import { mockBackend, collectConsoleErrors, login, GITHUB } from "./helpers.mjs";
+import { GITHUB_ACCOUNTS } from "../../src/sites.js";
+import { untrackedPages } from "../../src/views/github.js";
 
 test.describe("site view", () => {
   test("navigates from the sidebar, renders distributions and reacts to filters", async ({ page }) => {
@@ -66,14 +68,15 @@ test.describe("github view", () => {
     const errors = collectConsoleErrors(page);
     await login(page);
     await page.click("#nav a[href='#/github']");
+    const expectedSuggestions = untrackedPages(GITHUB.repos);
     await expect(page.locator("#gh-kpis .kpi")).toHaveCount(6);
-    await expect(page.locator("#gh-suggestions .suggestion")).toHaveCount(6);
-    await expect(page.locator("#gh-suggestions .suggestion-name").first()).toHaveText("avnergomes/controlpanel");
+    await expect(page.locator("#gh-suggestions .suggestion")).toHaveCount(expectedSuggestions.length);
+    await expect(page.locator("#gh-suggestions .suggestion-name").first()).toHaveText(expectedSuggestions[0].fullName);
     await expect(page.locator("#gh-repos tbody tr").first()).toBeVisible();
     await expect(page.locator("#gh-repos .tag--ok").first()).toBeVisible();
     await expect(page.locator("#gh-notice")).toContainText("42 chamadas");
     // One request per configured account.
-    expect(calls.github.length).toBe(5);
+    expect(calls.github.length).toBe(GITHUB_ACCOUNTS.length);
 
     await page.fill("#gh-filter", "clt");
     await expect(page.locator("#gh-repos tbody tr")).toHaveCount(1);
