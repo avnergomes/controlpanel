@@ -12,9 +12,10 @@ permissions:
   pages: write
   id-token: write
 
+# One group per ref: PR test runs must never cancel a deploy of main.
 concurrency:
-  group: "pages"
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
