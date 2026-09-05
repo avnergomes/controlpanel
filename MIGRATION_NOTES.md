@@ -3,7 +3,7 @@
 ## v3 (2026-09-05): cliente refatorado + backend `server/proxy.gs` publicado via clasp
 
 Publicado em 2026-09-05 na implantação oficial (`AKfycbwdSLK3…`, versão 44; versão 45 adiciona
-Serra do Mar WebGIS e Água Segura, com planilhas criadas automaticamente no primeiro acesso). O código anterior
+Serra do Mar WebGIS e Água Segura; versão 46 adiciona DGP Comando, com planilhas criadas automaticamente no primeiro acesso). O código anterior
 em produção era a versão 42 ("rate limit + sanitize numerico"); o v3 incorpora tudo o que ela
 tinha (D3D com planilha própria, origem d3dinovacao, rate limit por origem e minuto, sanitize
 numérico e o **auth gate de cadastro do datageoparana.github.io**, mantido literalmente).

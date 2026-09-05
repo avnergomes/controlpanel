@@ -53,6 +53,7 @@ const PROFILES = {
   d3d: { perDay: 0, lastDaysAgo: null, missing: true },        // absent from proxy SITES
   "serra-do-mar": { perDay: 6, lastDaysAgo: 0.4 },
   aguasegura: { perDay: 9, lastDaysAgo: 0.08 },
+  "dgp-comando": { perDay: 18, lastDaysAgo: 0.02 },
 };
 
 function hourWeight(hour) {

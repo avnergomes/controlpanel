@@ -56,6 +56,7 @@ var SITES = [
   // Script Properties as SHEET_ID_<key>.
   { key: 'serra-do-mar',         urlKey: 'avnergomes.github.io/serra-do-mar-webgis', name: 'Serra do Mar WebGIS', sheetId: '',                                          gids: [],                    trackingSheet: 'Tracking LGPD', kind: 'lgpd' },
   { key: 'aguasegura',           urlKey: 'aguasegura.github.io',                 name: 'Agua Segura',          sheetId: '',                                             gids: [],                    trackingSheet: 'Tracking LGPD', kind: 'lgpd' },
+  { key: 'dgp-comando',          urlKey: 'dgp-comando.github.io',                name: 'DGP Comando',          sheetId: '',                                             gids: [],                    trackingSheet: 'Tracking LGPD', kind: 'lgpd' },
 ];
 
 var ALLOWED_ORIGINS = [
@@ -65,6 +66,7 @@ var ALLOWED_ORIGINS = [
   'https://dayanebuenogomes.github.io',
   'https://d3dinovacao.github.io',
   'https://aguasegura.github.io',
+  'https://dgp-comando.github.io',
   'http://localhost',
   'http://127.0.0.1',
 ];

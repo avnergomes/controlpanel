@@ -25,6 +25,7 @@ export const SITES = Object.freeze([
   { key: "saude-parana", name: "Saúde Paraná", short: "Saúde", code: "11", kind: "lgpd", color: "#f0e442", url: "https://avnergomes.github.io/saude-parana/", repo: "avnergomes/saude-parana", group: "datageo" },
   { key: "seguranca-parana", name: "Segurança Paraná", short: "Segurança", code: "12", kind: "lgpd", color: "#8b93a8", url: "https://avnergomes.github.io/seguranca-parana/", repo: "avnergomes/seguranca-parana", group: "datageo" },
   { key: "c2-parana", name: "C2 Paraná", short: "C2", code: "13", kind: "lgpd", color: "#ff8500", url: "https://avnergomes.github.io/c2-parana/", repo: "avnergomes/c2-parana", group: "datageo" },
+  { key: "dgp-comando", name: "DGP Comando (Sala de Situação)", short: "DGP Comando", code: "19", kind: "lgpd", color: "#c084fc", url: "https://dgp-comando.github.io/", repo: "DGP-comando/dgp-comando.github.io", group: "datageo" },
   { key: "portfolio", name: "Portfólio", short: "Portfólio", code: "02", kind: "portfolio", color: "#ffb800", url: "https://avnergomes.github.io/portfolio/", repo: "avnergomes/portfolio", group: "pessoal" },
   { key: "serra-do-mar", name: "Serra do Mar WebGIS", short: "Serra do Mar", code: "17", kind: "lgpd", color: "#a3e635", url: "https://avnergomes.github.io/serra-do-mar-webgis/", repo: "avnergomes/serra-do-mar-webgis", group: "pessoal" },
   { key: "aguasegura", name: "Água Segura", short: "Água Segura", code: "18", kind: "lgpd", color: "#818cf8", url: "https://aguasegura.github.io/mapainterativo/", repo: "aguasegura/mapainterativo", group: "institucional" },
@@ -41,6 +42,7 @@ export const GITHUB_ACCOUNTS = Object.freeze([
   "dayanebuenogomes",
   "d3dinovacao",
   "aguasegura",
+  "DGP-comando",
 ]);
 
 const BY_KEY = new Map(SITES.map((site) => [site.key, site]));
