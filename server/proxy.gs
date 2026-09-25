@@ -32,7 +32,9 @@
 var VERSION = '3.0';
 var SESSION_DURATION_SECONDS = 3600;   // 1 h
 var RATE_LIMIT_PER_MINUTE = 60;        // tracking hits per origin per minute
-var DATA_CACHE_SECONDS = 180;          // proxy payload cache
+var DATA_CACHE_SECONDS = 180;          // proxy payload cache (on-demand rebuild)
+var WARM_EVERY_MINUTES = 5;            // warmCache trigger interval (1, 5, 10, 15 or 30)
+var WARM_CACHE_SECONDS = WARM_EVERY_MINUTES * 60 + 120; // outlives the interval
 var CHUNK_SIZE = 90000;                // CacheService max is 100 KB per key
 
 var SITES = [
@@ -293,19 +295,59 @@ function readAllSitesCached_() {
   try {
     cached = cacheGetLarge_('proxy_all');
     if (cached) return JSON.parse(cached);
-    var result = { fetchedAt: new Date().toISOString(), sites: {} };
-    for (var i = 0; i < SITES.length; i++) {
-      var site = SITES[i];
-      try {
-        result.sites[site.key] = { name: site.name, kind: site.kind, rows: readSiteRows_(site), status: 'ok' };
-      } catch (err) {
-        result.sites[site.key] = { name: site.name, kind: site.kind, rows: [], status: 'error', error: String(err && err.message || err) };
-      }
-    }
+    var result = readAllSites_();
     try { cachePutLarge_('proxy_all', JSON.stringify(result), DATA_CACHE_SECONDS); } catch (err) { /* ignore */ }
     return result;
   } finally {
     lock.releaseLock();
+  }
+}
+
+function readAllSites_() {
+  var result = { fetchedAt: new Date().toISOString(), sites: {} };
+  for (var i = 0; i < SITES.length; i++) {
+    var site = SITES[i];
+    try {
+      result.sites[site.key] = { name: site.name, kind: site.kind, rows: readSiteRows_(site), status: 'ok' };
+    } catch (err) {
+      result.sites[site.key] = { name: site.name, kind: site.kind, rows: [], status: 'error', error: String(err && err.message || err) };
+    }
+  }
+  return result;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CACHE WARMER (time-driven trigger)
+// ═══════════════════════════════════════════════════════════════════════════
+// Rebuilds the payload cache on a schedule so getData right after login does not
+// pay for reading every spreadsheet. The warmed entry outlives the interval, so
+// the cache never goes cold between runs. Run installWarmTrigger() once from the
+// Apps Script editor (asks for the "manage triggers" consent the first time).
+
+function warmCache() {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) return; // a getData rebuild is already running
+  try {
+    var result = readAllSites_();
+    cachePutLarge_('proxy_all', JSON.stringify(result), WARM_CACHE_SECONDS);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function installWarmTrigger() {
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === 'warmCache') ScriptApp.deleteTrigger(triggers[i]);
+  }
+  ScriptApp.newTrigger('warmCache').timeBased().everyMinutes(WARM_EVERY_MINUTES).create();
+  warmCache();
+}
+
+function removeWarmTrigger() {
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === 'warmCache') ScriptApp.deleteTrigger(triggers[i]);
   }
 }
 

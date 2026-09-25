@@ -24,6 +24,15 @@ npm run gas:health    # {"status":"ok","version":"3.0",...}
   (e o arquivo local antigo `google-apps-script-proxy.gs`, ignorado pelo git).
 - Escopos OAuth inalterados (Planilhas, Mail); nenhum novo consentimento foi necessário.
 
+## Cache pré-aquecido (gatilho `warmCache`)
+
+`server/proxy.gs` tem `warmCache()`, que relê todas as planilhas e grava o cache a cada
+`WARM_EVERY_MINUTES` (5 min), com validade maior que o intervalo, para o cache nunca esfriar.
+Ativação única, depois de `npm run gas:push`: no editor do Apps Script, executar
+`installWarmTrigger` (pede a permissão "gerenciar acionadores" na primeira vez). Para
+desligar: `removeWarmTrigger`. Atenção à cota de tempo de gatilhos da conta (90 min/dia em
+contas pessoais): se cada leitura passar de ~15 s, aumentar `WARM_EVERY_MINUTES` para 10.
+
 ## Histórico
 
 - 2026-03-01: token de sessão migrado do query string para o corpo do POST (cliente).

@@ -42,9 +42,20 @@ async function postJson(body, { timeoutMs = 45000 } = {}) {
   }
 }
 
+// Login is cheap on the server (~2 s); a slow answer means Apps Script stalled
+// (cold start, contention), so a shorter timeout plus one retry recovers faster.
+const LOGIN_TIMEOUT_MS = 20000;
+const RETRYABLE = new Set(["timeout", "network"]);
+
 export async function login(password) {
   if (isMockMode()) return { token: "mock-token" };
-  const result = await postJson({ action: "login", password });
+  let result;
+  try {
+    result = await postJson({ action: "login", password }, { timeoutMs: LOGIN_TIMEOUT_MS });
+  } catch (err) {
+    if (!(err instanceof ApiError) || !RETRYABLE.has(err.code)) throw err;
+    result = await postJson({ action: "login", password }, { timeoutMs: LOGIN_TIMEOUT_MS });
+  }
   if (result && result.success && result.token) return { token: result.token };
   throw new ApiError("Credencial inválida", "unauthorized");
 }
